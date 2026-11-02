@@ -27,6 +27,7 @@
             <form method="POST"
                   action="{{ $isEdit ? route('purchase-orders.update', $editing) : route('purchase-orders.store') }}"
                   class="txn-desk space-y-4"
+                  data-busy-label="{{ $isEdit ? __('Updating purchase order…') : __('Saving purchase order…') }}"
                   x-data="invoiceForm({
                       mode: 'purchase',
                       products: @js($products),
@@ -115,7 +116,7 @@
                 ])
 
                 <div class="txn-sticky-actions flex flex-wrap gap-2">
-                    <button class="btn-primary flex-1 sm:flex-none">{{ $isEdit ? __('Update PO') : __('Save purchase order') }}</button>
+                    <button class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ $isEdit ? __('Updating purchase order…') : __('Saving purchase order…') }}">{{ $isEdit ? __('Update PO') : __('Save purchase order') }}</button>
                 </div>
             </form>
         </section>

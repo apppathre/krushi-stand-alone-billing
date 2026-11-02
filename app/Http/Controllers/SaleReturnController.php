@@ -90,7 +90,7 @@ class SaleReturnController extends Controller
             return back()->withInput()->withErrors(['items' => $e->getMessage()]);
         }
 
-        return redirect()->route('sale-returns.show', $return)->with('status', __('Credit note :no created.', ['no' => $return->return_no]));
+        return redirect()->route('sale-returns.show', $return)->with('status', __('Credit note :no saved successfully.', ['no' => $return->return_no]));
     }
 
     public function show(Request $request, SaleReturn $saleReturn)

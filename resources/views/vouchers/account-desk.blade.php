@@ -19,7 +19,7 @@
 
     <div class="voucher-desk grid gap-4 lg:grid-cols-5">
         <section class="card card-body lg:col-span-3" aria-label="{{ $title }}">
-            <form method="POST" action="{{ route('account-vouchers.'.$kind.'.store') }}" class="space-y-3" data-busy-label="{{ __('Saving…') }}">
+            <form method="POST" action="{{ route('account-vouchers.'.$kind.'.store') }}" class="txn-desk space-y-3" data-busy-label="{{ __('Saving voucher…') }}" data-page-busy>
                 @csrf
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <x-field name="voucher_date" type="date" :label="__('Date')" :value="old('voucher_date', $voucherDate)"

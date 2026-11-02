@@ -51,7 +51,7 @@
                       defaultPlaceId: {{ (int) old('godown_id', $placeId) }},
                       old: @js($formItems),
                   })"
-                  class="txn-desk space-y-4" data-busy-label="{{ __('Saving…') }}">
+                  class="txn-desk space-y-4" data-busy-label="{{ $isEdit ? __('Updating voucher…') : __('Saving voucher…') }}">
                 @csrf
                 @if ($isEdit) @method('PUT') @endif
 
@@ -104,7 +104,7 @@
 
                 <div class="txn-sticky-actions flex flex-wrap gap-2">
                     <button type="button" class="btn-secondary w-full sm:w-auto" @click="add()"><x-icon name="plus" class="h-4 w-4" /> {{ __('Add line') }}</button>
-                    <button type="submit" class="btn-primary flex-1 sm:flex-none">{{ $isEdit ? __('Update') : __('Save') }}</button>
+                    <button type="submit" class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ $isEdit ? __('Updating voucher…') : __('Saving voucher…') }}">{{ $isEdit ? __('Update') : __('Save') }}</button>
                 </div>
             </form>
         </section>

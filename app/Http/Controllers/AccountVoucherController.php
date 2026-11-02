@@ -142,7 +142,7 @@ class AccountVoucherController extends Controller
 
         return redirect()
             ->route('account-vouchers.'.$kind)
-            ->with('status', __('Voucher :no saved.', ['no' => $voucher->voucher_no]));
+            ->with('status', __('Voucher :no saved successfully.', ['no' => $voucher->voucher_no]));
     }
 
     public function register(Request $request)

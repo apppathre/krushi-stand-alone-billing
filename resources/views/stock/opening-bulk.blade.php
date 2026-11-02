@@ -19,8 +19,8 @@
               products: @js($products),
               placeId: {{ (int) $placeId }},
           })"
-          class="space-y-4"
-          data-busy-label="{{ __('Saving…') }}">
+          class="txn-desk space-y-4"
+          data-busy-label="{{ __('Saving opening stock…') }}">
         @csrf
 
         <div class="card card-body grid gap-4 md:grid-cols-4">

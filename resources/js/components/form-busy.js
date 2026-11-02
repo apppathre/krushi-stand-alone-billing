@@ -175,7 +175,13 @@
         if (!isSubmitControl(btn)) {
             btn = form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
         }
+        const label = waitLabel(btn, form);
         markFormBusy(form, btn);
+
+        // Full-page overlay on invoice / stock / voucher desks so the page clearly shows loading.
+        if (form.classList.contains('txn-desk') || form.hasAttribute('data-page-busy')) {
+            window.FormBusy.showOverlay(label);
+        }
 
         window.setTimeout(() => {
             if (form.getAttribute('data-busy') !== '1') return;

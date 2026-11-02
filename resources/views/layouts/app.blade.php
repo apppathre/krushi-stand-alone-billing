@@ -405,8 +405,12 @@
     <div id="ui-toasts" class="pointer-events-none fixed bottom-4 right-4 z-[80] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
         <template x-for="t in $store.ui.toasts" :key="t.id">
             <div class="pointer-events-auto rounded-xl border px-4 py-3 text-sm shadow-lg"
-                 :class="t.type === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-sage-dark bg-white text-ink'"
-                 x-text="t.message"></div>
+                 :class="t.type === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-leaf-dark'"
+                 role="status">
+                <p class="text-[11px] font-bold uppercase tracking-wide opacity-70"
+                   x-text="t.type === 'error' ? @js(__('Not saved')) : @js(__('Saved'))"></p>
+                <p class="mt-0.5 font-medium leading-snug" x-text="t.message"></p>
+            </div>
         </template>
     </div>
 </template>

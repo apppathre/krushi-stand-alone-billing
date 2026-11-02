@@ -91,7 +91,7 @@ class StockJournalController extends Controller
         }
 
         return redirect()->route('stock-journals.show', $journal)
-            ->with('status', __(':type :no saved.', ['type' => __(self::META[$type][0]), 'no' => $journal->journal_no]));
+            ->with('status', __(':type :no saved successfully.', ['type' => __(self::META[$type][0]), 'no' => $journal->journal_no]));
     }
 
     public function browse(Request $request, string $type = 'journal')
@@ -201,7 +201,7 @@ class StockJournalController extends Controller
         }
 
         return redirect()->route('stock-journals.show', $journal)
-            ->with('status', __(':type :no updated.', ['type' => __(self::META[$type][0]), 'no' => $journal->journal_no]));
+            ->with('status', __(':type :no updated successfully.', ['type' => __(self::META[$type][0]), 'no' => $journal->journal_no]));
     }
 
     public function cancel(Request $request, StockJournal $stockJournal): RedirectResponse
@@ -215,7 +215,10 @@ class StockJournalController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        return back()->with('status', __('Voucher cancelled.'));
+        return back()->with('status', __(':type :no cancelled.', [
+            'type' => __(self::META[$stockJournal->type][0] ?? 'Voucher'),
+            'no' => $stockJournal->journal_no,
+        ]));
     }
 
     private function authorizeJournalAccess(Request $request, StockJournal $journal): void

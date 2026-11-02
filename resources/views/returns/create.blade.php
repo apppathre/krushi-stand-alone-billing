@@ -4,7 +4,7 @@
         <p class="text-xs text-ink-soft">{{ $sale->customer_name ?: $sale->client->display_name }} &middot; {{ fmt_date($sale->invoice_date) }}</p>
     </x-slot>
 
-    <form method="POST" action="{{ route('sale-returns.store') }}" class="txn-desk space-y-4">
+    <form method="POST" action="{{ route('sale-returns.store') }}" class="txn-desk space-y-4" data-busy-label="{{ __('Saving credit note…') }}">
         @csrf
         <input type="hidden" name="sale_id" value="{{ $sale->id }}">
 
@@ -63,7 +63,7 @@
         <p class="text-sm text-ink-soft">{{ __('The credit note reduces the client balance and puts the goods back into the original batch and godown.') }}</p>
 
         <div class="txn-sticky-actions flex flex-wrap gap-2">
-            <button class="btn-primary flex-1 sm:flex-none">{{ __('Create credit note') }}</button>
+            <button class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ __('Saving credit note…') }}">{{ __('Create credit note') }}</button>
             <a href="{{ route('sales.show', $sale) }}" class="btn-secondary">{{ __('Cancel') }}</a>
         </div>
     </form>

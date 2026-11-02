@@ -89,7 +89,7 @@ class PurchaseOrderController extends Controller
         }
 
         return redirect()->route('purchase-orders.show', $order)
-            ->with('status', __('Purchase order :no saved.', ['no' => $order->order_no]));
+            ->with('status', __('Purchase order :no saved successfully.', ['no' => $order->order_no]));
     }
 
     public function show(Request $request, PurchaseOrder $purchaseOrder)
@@ -151,7 +151,7 @@ class PurchaseOrderController extends Controller
         }
 
         return redirect()->route('purchase-orders.show', $order)
-            ->with('status', __('Purchase order :no updated.', ['no' => $order->order_no]));
+            ->with('status', __('Purchase order :no updated successfully.', ['no' => $order->order_no]));
     }
 
     public function cancel(Request $request, PurchaseOrder $purchaseOrder): RedirectResponse
@@ -164,7 +164,7 @@ class PurchaseOrderController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        return back()->with('status', __('Purchase order cancelled.'));
+        return back()->with('status', __('Purchase order :no cancelled.', ['no' => $order->order_no]));
     }
 
     /** Prefill purchase desk from this PO. */

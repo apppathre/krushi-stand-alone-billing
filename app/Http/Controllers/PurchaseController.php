@@ -198,7 +198,7 @@ class PurchaseController extends Controller
             return back()->withInput()->withErrors($e->errors());
         }
 
-        return redirect()->route('purchases.show', $purchase)->with('status', __('Purchase :no recorded.', ['no' => $purchase->purchase_no]));
+        return redirect()->route('purchases.show', $purchase)->with('status', __('Purchase :no saved successfully.', ['no' => $purchase->purchase_no]));
     }
 
     public function show(Request $request, Purchase $purchase)
@@ -244,6 +244,6 @@ class PurchaseController extends Controller
         $this->authorizeGodown($request, $purchase->godown_id);
         $this->purchases->cancel($purchase);
 
-        return redirect()->route('purchases.show', $purchase)->with('status', __('Purchase cancelled.'));
+        return redirect()->route('purchases.show', $purchase)->with('status', __('Purchase :no cancelled.', ['no' => $purchase->purchase_no]));
     }
 }

@@ -38,10 +38,13 @@ export function registerUiKit(Alpine) {
             }
         },
 
-        toast(message, type = 'success') {
+        toast(message, type = 'success', durationMs = null) {
             const id = ++this._toastId;
             this.toasts.push({ id, message, type });
-            setTimeout(() => this.dismissToast(id), 4200);
+            const ms = durationMs != null
+                ? Number(durationMs)
+                : (type === 'error' ? 6500 : 5200);
+            setTimeout(() => this.dismissToast(id), Number.isFinite(ms) && ms > 0 ? ms : 5200);
         },
 
         dismissToast(id) {

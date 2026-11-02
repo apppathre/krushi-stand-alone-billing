@@ -14,7 +14,7 @@
               supplyState: '{{ old('supply_state_code', $companyState) }}',
               paid: {{ (float) old('paid_amount', 0) }},
               old: @js(old('items', [])),
-          })" class="space-y-4">
+          })" class="txn-desk space-y-4" data-busy-label="{{ __('Saving purchase…') }}">
         @csrf
 
         <div class="card card-body grid gap-4 md:grid-cols-4">

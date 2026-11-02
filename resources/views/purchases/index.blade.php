@@ -23,6 +23,7 @@
         <section class="mb-2" aria-label="{{ __('New Purchase') }}">
             <form method="POST" action="{{ route('purchases.store') }}"
                   class="txn-desk space-y-4"
+                  data-busy-label="{{ __('Saving purchase…') }}"
                   x-data="invoiceForm({
                       mode: 'purchase',
                       products: @js($products),
@@ -152,7 +153,7 @@
                 ])
 
                 <div class="txn-sticky-actions flex flex-wrap gap-2">
-                    <button class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ __('Saving…') }}">{{ __('Save purchase') }}</button>
+                    <button class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ __('Saving purchase…') }}">{{ __('Save purchase') }}</button>
                 </div>
             </form>
         </section>

@@ -4,7 +4,7 @@
         <p class="text-xs text-ink-soft">{{ $purchase->supplier->display_name }} &middot; {{ fmt_date($purchase->purchase_date) }}</p>
     </x-slot>
 
-    <form method="POST" action="{{ route('purchase-returns.store') }}" class="txn-desk space-y-4">
+    <form method="POST" action="{{ route('purchase-returns.store') }}" class="txn-desk space-y-4" data-busy-label="{{ __('Saving purchase return…') }}">
         @csrf
         <input type="hidden" name="purchase_id" value="{{ $purchase->id }}">
 
@@ -65,7 +65,7 @@
         @foreach ($errors->get('qty.*') as $messages) @foreach ($messages as $m) <p class="error-text">{{ $m }}</p> @endforeach @endforeach
 
         <div class="txn-sticky-actions flex flex-wrap gap-2">
-            <button class="btn-primary flex-1 sm:flex-none">{{ __('Save purchase return') }}</button>
+            <button class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ __('Saving purchase return…') }}">{{ __('Save purchase return') }}</button>
             <a href="{{ route('purchases.show', $purchase) }}" class="btn-secondary">{{ __('Cancel') }}</a>
         </div>
     </form>

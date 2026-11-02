@@ -162,7 +162,7 @@ class SaleController extends Controller
             return back()->withInput()->withErrors($e->errors());
         }
 
-        $status = __('Invoice :no created.', ['no' => $sale->invoice_no]);
+        $status = __('Invoice :no saved successfully.', ['no' => $sale->invoice_no]);
         if ($afterSave === 'print') {
             $company = CompanyProfile::current();
             $format = PrintFormats::defaultSaleFormat($company);
@@ -369,7 +369,7 @@ class SaleController extends Controller
         $this->authorizeGodown($request, $sale->godown_id);
         $this->sales->cancel($sale);
 
-        return redirect()->route('sales.show', $sale)->with('status', __('Invoice cancelled.'));
+        return redirect()->route('sales.show', $sale)->with('status', __('Invoice :no cancelled.', ['no' => $sale->invoice_no]));
     }
 
     private function saleClients(int $walkInId)

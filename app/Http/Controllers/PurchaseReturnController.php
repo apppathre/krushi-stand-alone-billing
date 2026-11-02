@@ -94,7 +94,7 @@ class PurchaseReturnController extends Controller
         }
 
         return redirect()->route('purchase-returns.show', $return)
-            ->with('status', __('Purchase return :no created.', ['no' => $return->return_no]));
+            ->with('status', __('Purchase return :no saved successfully.', ['no' => $return->return_no]));
     }
 
     public function show(Request $request, PurchaseReturn $purchaseReturn)
