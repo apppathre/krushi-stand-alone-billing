@@ -356,9 +356,8 @@ Alpine.data('invoiceForm', (config) => ({
                 line.product_id = id || '';
                 if (line.product_id) {
                     this.pick(line);
-                    if (showStock) {
-                        this.$nextTick(() => setTimeout(() => this.refreshProductSelect(el, line), 0));
-                    }
+                    // Do NOT remount Select2 here — remounting every pick drops the menu
+                    // and duplicates work. Stock for the place is shown under the field.
                 } else {
                     line.batch_id = '';
                     line.rate = 0;
@@ -370,6 +369,7 @@ Alpine.data('invoiceForm', (config) => ({
 
     refreshProductSelect(el, line) {
         if (!el || !line) return;
+        // Place change only: update labels for the new godown stock.
         this.mountProductSelect(el, line);
     },
 

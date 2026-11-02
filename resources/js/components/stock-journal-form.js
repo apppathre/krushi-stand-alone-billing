@@ -150,7 +150,6 @@ Alpine.data('stockJournalForm', (config) => ({
                 line.product_id = id || '';
                 if (line.product_id) {
                     this.pick(line);
-                    this.$nextTick(() => setTimeout(() => this.refreshProductSelect(el, line), 0));
                 } else {
                     line.batch_id = '';
                 }

@@ -12,24 +12,21 @@ if (!$.fn?.select2) {
 }
 
 const NS = '.krushiSearchable';
+const RESULT_LIMIT = 40;
 
-/** Shared Select2 options — search always visible (mobile-friendly). */
-function select2Options(el, placeholder, allowClear) {
-    const parent = el.closest('.txn-line, .txn-desk, .card-body, form, .ui-drawer-body') || document.body;
-
+/**
+ * Always attach dropdown to <body> so it is not clipped / offset by overflow parents
+ * (.card, .txn-line, sticky footers, etc.).
+ */
+function select2Base(placeholder, allowClear) {
     return {
         width: '100%',
         placeholder: placeholder || 'Select',
         allowClear: !!allowClear,
         minimumResultsForSearch: 0,
-        dropdownParent: $(parent),
-        matcher(params, data) {
-            if ($.trim(params.term || '') === '') return data;
-            if (typeof data.text === 'undefined') return null;
-            if (!data.id) return data;
-            const term = String(params.term).toLowerCase();
-            return String(data.text).toLowerCase().includes(term) ? data : null;
-        },
+        dropdownParent: $(document.body),
+        dropdownCssClass: 'krushi-select2-drop',
+        selectionCssClass: 'krushi-select2-sel',
     };
 }
 
@@ -67,22 +64,25 @@ export function productStockLabel(product, placeId = null, { showStock = true } 
     return `${product.name}${code} · ${qtyText}${unit ? ` ${unit}` : ''}`.trim();
 }
 
-function fillProductOptions(el, products, value, placeId, placeholder, showStock) {
-    el.innerHTML = '';
-    el.appendChild(new Option(placeholder, '', !value, !value));
-    products.forEach((p) => {
-        const selected = String(p.id) === String(value);
-        el.appendChild(new Option(
-            productStockLabel(p, placeId, { showStock }),
-            String(p.id),
-            selected,
-            selected,
+function filterProducts(products, term, showStock) {
+    const q = String(term || '').toLowerCase().trim();
+    let list = products || [];
+    if (q) {
+        list = list.filter((p) => (
+            String(p.name || '').toLowerCase().includes(q)
+            || String(p.code || '').toLowerCase().includes(q)
+            || String(p.hsn || '').toLowerCase().includes(q)
         ));
-    });
+    } else if (showStock) {
+        // Prefer in-stock items at the top when browsing without a query.
+        list = list.slice().sort((a, b) => Number(b.stock || 0) - Number(a.stock || 0));
+    }
+    return list;
 }
 
 /**
- * Rebuild options from a product list + Select2 (sale / purchase / PO / journal lines).
+ * Product Select2: does NOT clone the full catalog into every line (memory-safe).
+ * Search filters a shared array and returns at most RESULT_LIMIT rows.
  */
 export function bindProductSelect2(el, {
     products = [],
@@ -95,11 +95,33 @@ export function bindProductSelect2(el, {
 } = {}) {
     if (!el) return;
 
-    destroySelect2(el);
-    fillProductOptions(el, products, value, placeId, placeholder, showStock);
-
+    // Avoid full remount if already bound to the same catalog reference + place.
+    const sig = `${showStock ? 1 : 0}|${placeId || ''}|${products.length}`;
     const $el = $(el);
+    if (
+        $.fn?.select2
+        && $el.hasClass('select2-hidden-accessible')
+        && el.dataset.krushiProdSig === sig
+    ) {
+        // Only sync selected value / label.
+        setSelectedProductOption(el, products, value, placeId, placeholder, showStock);
+        $el.off(NS);
+        $el.on(`change${NS}`, function () {
+            if (typeof onChange === 'function') onChange($(this).val() || '');
+        });
+        if (String($el.val() || '') !== String(value || '')) {
+            $el.val(value ? String(value) : null).trigger('change.select2');
+        }
+        return;
+    }
+
+    destroySelect2(el);
+    setSelectedProductOption(el, products, value, placeId, placeholder, showStock);
+    el.dataset.krushiProdSig = sig;
+
     if (!$.fn?.select2) {
+        // Native fallback: still avoid dumping the whole catalog — keep selected only + note.
+        $el.off(NS);
         $el.on(`change${NS}`, function () {
             if (typeof onChange === 'function') onChange($(this).val() || '');
         });
@@ -107,25 +129,61 @@ export function bindProductSelect2(el, {
     }
 
     try {
-        $el.select2(select2Options(el, placeholder, allowClear));
-        $el.val(value ? String(value) : null).trigger('change.select2');
+        $el.select2({
+            ...select2Base(placeholder, allowClear),
+            ajax: {
+                delay: 60,
+                transport(params, success) {
+                    const term = params?.data?.q || '';
+                    const rows = filterProducts(products, term, showStock)
+                        .slice(0, RESULT_LIMIT)
+                        .map((p) => ({
+                            id: String(p.id),
+                            text: productStockLabel(p, placeId, { showStock }),
+                        }));
+                    success({ results: rows });
+                },
+                processResults: (data) => data,
+            },
+        });
+
+        if (value) {
+            $el.val(String(value)).trigger('change.select2');
+        } else {
+            $el.val(null).trigger('change.select2');
+        }
     } catch (e) {
         console.error('Select2 product init failed', e);
     }
 
+    $el.off(NS);
     $el.on(`change${NS}`, function () {
         if (typeof onChange === 'function') onChange($(this).val() || '');
     });
 }
 
+/** Keep only placeholder + current selection in the <select> DOM (light). */
+function setSelectedProductOption(el, products, value, placeId, placeholder, showStock) {
+    const current = value ? String(value) : '';
+    el.innerHTML = '';
+    el.appendChild(new Option(placeholder, '', !current, !current));
+    if (!current) return;
+    const p = (products || []).find((row) => String(row.id) === current);
+    const label = p
+        ? productStockLabel(p, placeId, { showStock })
+        : current;
+    el.appendChild(new Option(label, current, true, true));
+}
+
 export function unbindProductSelect2(el) {
     if (!el) return;
+    delete el.dataset.krushiProdSig;
     destroySelect2(el);
 }
 
 /**
  * Enhance an existing <select> (customer / supplier / filters) with Select2 search.
- * Keeps current options; safe to call again after options are added.
+ * Uses body dropdown parent so the menu lines up under the field.
  */
 export function enhanceSelect(el, {
     placeholder = null,
@@ -151,7 +209,19 @@ export function enhanceSelect(el, {
     }
 
     try {
-        $el.select2(select2Options(el, ph, allowClear));
+        // Keep native <option>s (one party/ledger list per page is fine).
+        // Product lines use bindProductSelect2 AJAX path for memory.
+        $el.select2({
+            ...select2Base(ph, allowClear),
+            matcher(params, data) {
+                if ($.trim(params.term || '') === '') return data;
+                if (typeof data.text === 'undefined') return null;
+                if (!data.id) return data;
+                const term = String(params.term).toLowerCase();
+                return String(data.text).toLowerCase().includes(term) ? data : null;
+            },
+        });
+
         if (current) {
             $el.val(String(current)).trigger('change.select2');
         } else {
@@ -161,6 +231,7 @@ export function enhanceSelect(el, {
         console.error('Select2 enhance failed', e);
     }
 
+    $el.off(NS);
     $el.on(`change${NS}`, function () {
         if (typeof onChange === 'function') onChange($(this).val() || '');
     });
@@ -193,7 +264,6 @@ export function refreshEnhancedSelect(el, value = null) {
  */
 export function autoEnhanceSearchable(root = document) {
     root.querySelectorAll('select.js-searchable').forEach((el) => {
-        // Alpine-owned picks (invoice / journal) mount themselves with onChange hooks.
         if (el.classList.contains('js-party-select')
             || el.classList.contains('js-sale-product')
             || el.classList.contains('js-txn-product')) {
