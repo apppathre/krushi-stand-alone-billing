@@ -20,9 +20,13 @@ class DashboardController extends Controller
     /** Fast shell only — KPIs / figures / recent load over Ajax. */
     public function __invoke(Request $request): View
     {
+        $company = CompanyProfile::current();
+
         return view('dashboard', [
             'workScope' => WorkContext::scope($request),
             'shortcuts' => $this->shortcuts($request),
+            'liveStockOnDashboard' => (bool) ($company->live_stock_enabled && $company->live_stock_on_dashboard),
+            'liveStockRefresh' => max(10, min(300, (int) ($company->live_stock_refresh_sec ?: 30))),
         ]);
     }
 

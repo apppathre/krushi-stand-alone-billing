@@ -104,7 +104,19 @@
                     :placeholder="__('All places')"
                     :options="\App\Models\Godown::where('is_active', true)->orderBy('name')->get()->mapWithKeys(fn ($g) => [$g->id => $g->display_name])->all()" />
                 <x-check name="live_stock_show_rate" :label="__('Show sale rate on board')"
-                         :checked="old('live_stock_show_rate', $company->live_stock_show_rate ?? false)" class="md:col-span-2" />
+                         :checked="old('live_stock_show_rate', $company->live_stock_show_rate ?? false)" />
+                <x-check name="live_stock_on_dashboard" :label="__('Show live stock panel on staff dashboard')"
+                         :checked="old('live_stock_on_dashboard', $company->live_stock_on_dashboard ?? false)" />
+                <x-select-field name="live_stock_default_view" :label="__('Default board layout')"
+                    :value="old('live_stock_default_view', $company->live_stock_default_view ?? 'table')"
+                    :options="['table' => __('Full table (scroll)'), 'cards' => __('Cards / tiles')]" />
+                <x-select-field name="live_stock_theme" :label="__('Default colour mode')"
+                    :value="old('live_stock_theme', $company->live_stock_theme ?? 'day')"
+                    :options="['day' => __('Day (cream — recommended)'), 'night' => __('Night (dark TV)')]"
+                    :hint="__('Board viewers can still switch layout and day/night from buttons on the screen.')" />
+                <p class="text-xs text-ink-soft md:col-span-2">
+                    {{ __('Only items with “Show on live stock board” in Item Master appear. Qty refreshes automatically.') }}
+                </p>
                 <p class="text-xs text-ink-soft md:col-span-2">
                     {{ __('Open') }}: <a class="font-semibold text-leaf hover:underline" href="{{ url('/live-stock') }}" target="_blank" rel="noopener">{{ url('/live-stock') }}</a>
                     · <a class="font-semibold text-leaf hover:underline" href="{{ route('stock.preview') }}">{{ __('Staff stock preview') }}</a>

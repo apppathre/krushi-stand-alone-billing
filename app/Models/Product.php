@@ -18,6 +18,7 @@ class Product extends Model
         return [
             'batch_required' => 'boolean',
             'is_active' => 'boolean',
+            'show_on_live_stock' => 'boolean',
             'gst_rate' => 'decimal:2',
             'purchase_rate' => 'decimal:2',
             'sale_rate' => 'decimal:2',

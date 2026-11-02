@@ -74,6 +74,12 @@ class LiveStockController extends Controller
             'payload' => $this->payload($company, $request->input('q'), $request->input('category_id')),
             'categories' => Category::orderBy('name')->get(['id', 'name', 'name_mr']),
             'refresh' => max(10, min(300, (int) ($company->live_stock_refresh_sec ?: 30))),
+            'defaultView' => in_array($company->live_stock_default_view, ['table', 'cards'], true)
+                ? $company->live_stock_default_view
+                : 'table',
+            'defaultTheme' => in_array($company->live_stock_theme, ['day', 'night'], true)
+                ? $company->live_stock_theme
+                : 'day',
         ]);
     }
 
@@ -95,7 +101,29 @@ class LiveStockController extends Controller
         ]);
     }
 
-    private function payload(CompanyProfile $company, mixed $q, mixed $categoryId): array
+    /** Staff dashboard live panel (auth required — no passkey). */
+    public function dashboardData(Request $request): JsonResponse
+    {
+        $company = CompanyProfile::current();
+        if (! $company->live_stock_enabled || ! $company->live_stock_on_dashboard) {
+            return response()->json(['ok' => false, 'message' => 'off'], 404);
+        }
+
+        $payload = $this->payload($company, $request->input('q'), $request->input('category_id'));
+
+        return response()->json([
+            'ok' => true,
+            'at' => now()->format('H:i:s'),
+            'items' => $payload['items'],
+            'low' => $payload['low_count'],
+            'title' => $payload['title'],
+            'godown' => $payload['godown'],
+            'show_rate' => $payload['show_rate'],
+            'board_url' => url('/live-stock'),
+        ]);
+    }
+
+    public function payload(CompanyProfile $company, mixed $q = null, mixed $categoryId = null): array
     {
         $gid = $company->live_stock_godown_id ? (int) $company->live_stock_godown_id : null;
         $balances = StockQty::productBalances($gid);
@@ -103,6 +131,7 @@ class LiveStockController extends Controller
 
         $products = Product::with(['unit', 'category'])
             ->where('is_active', true)
+            ->where('show_on_live_stock', true)
             ->when(filled($q), function ($query) use ($q) {
                 $t = '%'.$q.'%';
                 $query->where(fn ($w) => $w->where('name', 'like', $t)->orWhere('name_mr', 'like', $t)->orWhere('code', 'like', $t));
@@ -115,9 +144,6 @@ class LiveStockController extends Controller
         $low = 0;
         foreach ($products as $p) {
             $qty = round((float) ($balances[$p->id] ?? 0), 3);
-            if ($qty <= 0.0005 && ! ($p->reorder_level > 0)) {
-                // still show zero stock so shop sees empty items? Optional — show all active
-            }
             $isLow = $p->reorder_level > 0 && $qty <= (float) $p->reorder_level;
             if ($isLow) {
                 $low++;
@@ -134,7 +160,6 @@ class LiveStockController extends Controller
             ];
         }
 
-        // Prefer items with stock, then low, then name — keep board useful
         usort($items, function ($a, $b) {
             if ($a['low'] !== $b['low']) {
                 return $a['low'] ? -1 : 1;

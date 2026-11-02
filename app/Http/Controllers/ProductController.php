@@ -44,7 +44,7 @@ class ProductController extends Controller
     public function create()
     {
         return view('products._drawer', $this->formData(new Product([
-            'is_active' => true, 'batch_required' => true, 'gst_rate' => 5,
+            'is_active' => true, 'batch_required' => true, 'show_on_live_stock' => true, 'gst_rate' => 5,
         ])));
     }
 
@@ -246,6 +246,7 @@ class ProductController extends Controller
         }
         $data['batch_required'] = $request->boolean('batch_required');
         $data['is_active'] = $request->boolean('is_active');
+        $data['show_on_live_stock'] = $request->boolean('show_on_live_stock');
 
         return $data;
     }

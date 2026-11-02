@@ -144,6 +144,85 @@
             </div>
         </section>
 
+        @if ($liveStockOnDashboard ?? false)
+            <section class="card card-body" x-data="dashLiveStock({
+                url: @js(route('dashboard.live-stock')),
+                refresh: {{ (int) ($liveStockRefresh ?? 30) }},
+            })" x-init="load()">
+                <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                        <h2 class="card-title" x-text="title || @js(__('Live stock'))"></h2>
+                        <p class="text-xs text-ink-soft">
+                            <span x-show="godown" x-text="godown + ' · '"></span>
+                            {{ __('Qty updates every') }} {{ (int) ($liveStockRefresh ?? 30) }}s
+                            · {{ __('Low') }}: <strong x-text="low"></strong>
+                            · <span x-text="clock"></span>
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ url('/live-stock') }}" target="_blank" rel="noopener" class="btn-secondary btn-sm">{{ __('Open TV board') }}</a>
+                        <button type="button" class="btn-secondary btn-sm" @click="load()" :disabled="loading">{{ __('Refresh') }}</button>
+                    </div>
+                </div>
+                <p class="text-sm text-accent" x-show="error" x-cloak x-text="error"></p>
+                <div class="overflow-x-auto rounded-lg border border-sage" x-show="!error">
+                    <table class="w-full text-sm">
+                        <thead class="bg-cream text-left text-xs uppercase tracking-wide text-ink-soft">
+                            <tr>
+                                <th class="px-3 py-2">{{ __('Item') }}</th>
+                                <th class="px-3 py-2">{{ __('Code') }}</th>
+                                <th class="px-3 py-2 text-right">{{ __('Qty') }}</th>
+                                <th class="px-3 py-2 text-right" x-show="showRate">{{ __('Rate') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="it in items.slice(0, 40)" :key="it.id">
+                                <tr class="border-t border-sage" :class="{ 'bg-amber-50': it.low, 'opacity-50': it.qty <= 0 }">
+                                    <td class="px-3 py-1.5 font-semibold" x-text="it.name"></td>
+                                    <td class="px-3 py-1.5 text-ink-soft" x-text="it.code || '—'"></td>
+                                    <td class="px-3 py-1.5 text-right font-display text-base font-bold">
+                                        <span x-text="Number(it.qty).toLocaleString(undefined, { maximumFractionDigits: 3 })"></span>
+                                        <span class="text-xs font-semibold text-ink-soft" x-text="it.unit || ''"></span>
+                                    </td>
+                                    <td class="px-3 py-1.5 text-right" x-show="showRate" x-text="it.rate != null ? ('₹ ' + Number(it.rate).toFixed(2)) : '—'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="mt-2 text-xs text-ink-soft" x-show="items.length > 40" x-cloak>
+                    {{ __('Showing first 40 items — open the TV board for the full list.') }}
+                </p>
+                <script>
+                    function dashLiveStock(cfg) {
+                        return {
+                            items: [], low: 0, title: '', godown: '', showRate: false, clock: '', error: '', loading: false,
+                            load() {
+                                this.loading = true;
+                                fetch(cfg.url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                                    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+                                    .then(({ ok, d }) => {
+                                        if (!ok || !d.ok) { this.error = d.message === 'off' ? @js(__('Live stock panel is off.')) : @js(__('Could not load live stock.')); return; }
+                                        this.error = '';
+                                        this.items = d.items || [];
+                                        this.low = d.low || 0;
+                                        this.title = d.title || '';
+                                        this.godown = d.godown || '';
+                                        this.showRate = !!d.show_rate;
+                                        this.clock = d.at || '';
+                                    })
+                                    .catch(() => { this.error = @js(__('Could not load live stock.')); })
+                                    .finally(() => { this.loading = false; });
+                            },
+                            init() {
+                                setInterval(() => this.load(), cfg.refresh * 1000);
+                            }
+                        };
+                    }
+                </script>
+            </section>
+        @endif
+
         <section class="card card-body">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>

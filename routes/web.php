@@ -75,6 +75,7 @@ Route::middleware('auth')->group(function () {
         Route::get('dashboard/pulse', [DashboardController::class, 'pulse'])->name('dashboard.pulse');
         Route::get('dashboard/figures', [DashboardController::class, 'figures'])->name('dashboard.figures');
         Route::get('dashboard/recent', [DashboardController::class, 'recent'])->name('dashboard.recent');
+        Route::get('dashboard/live-stock', [LiveStockController::class, 'dashboardData'])->name('dashboard.live-stock');
         Route::get('dashboard/alerts/low-stock', [DashboardController::class, 'lowStockAlert'])->name('dashboard.alerts.low-stock');
         Route::get('dashboard/alerts/expiry', [DashboardController::class, 'expiryAlert'])->name('dashboard.alerts.expiry');
         Route::get('dashboard/alerts/outstanding', [DashboardController::class, 'outstandingAlert'])->name('dashboard.alerts.outstanding');

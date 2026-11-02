@@ -20,6 +20,7 @@ class CompanyProfile extends Model
             'enforce_credit_limit' => 'boolean',
             'live_stock_enabled' => 'boolean',
             'live_stock_show_rate' => 'boolean',
+            'live_stock_on_dashboard' => 'boolean',
             'statement_link_enabled' => 'boolean',
             'statement_allow_payment' => 'boolean',
             'default_credit_limit' => 'decimal:2',

@@ -50,12 +50,16 @@ class AppControlController extends Controller
             'live_stock_refresh_sec' => ['nullable', 'integer', 'min:10', 'max:300'],
             'live_stock_godown_id' => ['nullable', 'exists:godowns,id'],
             'live_stock_show_rate' => ['sometimes', 'boolean'],
+            'live_stock_default_view' => ['required', 'in:table,cards'],
+            'live_stock_theme' => ['required', 'in:day,night'],
+            'live_stock_on_dashboard' => ['sometimes', 'boolean'],
         ]);
 
         $data['commission_enabled'] = $request->boolean('commission_enabled');
         $data['enforce_credit_limit'] = $request->boolean('enforce_credit_limit');
         $data['live_stock_enabled'] = $request->boolean('live_stock_enabled');
         $data['live_stock_show_rate'] = $request->boolean('live_stock_show_rate');
+        $data['live_stock_on_dashboard'] = $request->boolean('live_stock_on_dashboard');
         $data['default_commission_pct'] = (float) ($data['default_commission_pct'] ?? 0);
         $data['default_credit_limit'] = (float) $data['default_credit_limit'];
         $data['overdue_interest_pct'] = (float) ($data['overdue_interest_pct'] ?? 0);
@@ -70,6 +74,7 @@ class AppControlController extends Controller
             'default_invoice_print_format', 'invoice_print_lang', 'default_print_size',
             'live_stock_enabled', 'live_stock_title', 'live_stock_refresh_sec',
             'live_stock_godown_id', 'live_stock_show_rate',
+            'live_stock_default_view', 'live_stock_theme', 'live_stock_on_dashboard',
         ])->all();
 
         if (filled($data['live_stock_passkey'] ?? null)) {

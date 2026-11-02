@@ -67,6 +67,8 @@
     <div class="flex flex-wrap gap-6">
         <x-check name="batch_required" :label="__('Batch tracking required (seeds, pesticides…)')" :checked="$product->batch_required" />
         <x-check name="is_active" :label="__('Active')" :checked="$product->is_active" />
+        <x-check name="show_on_live_stock" :label="__('Show on live stock board')"
+                 :checked="old('show_on_live_stock', $product->exists ? $product->show_on_live_stock : true)" />
     </div>
 
     <div class="flex flex-wrap gap-2 border-t border-sage pt-4">
