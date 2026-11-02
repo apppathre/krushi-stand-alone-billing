@@ -69,12 +69,10 @@
 
                 <div class="txn-line__full">
                     <label class="txn-line__label label">{{ __('Product') }}</label>
-                    <select :name="`items[${i}][product_id]`" x-model="line.product_id" @change="pick(line)" class="input input-sm" required>
-                        <option value="">{{ __('Select') }}</option>
-                        <template x-for="p in catalog(line)" :key="p.id">
-                            <option :value="p.id" :selected="String(p.id) === String(line.product_id)"
-                                    x-text="p.name + (p.stock != null ? ' (' + p.stock + ')' : (p.code ? ' (' + p.code + ')' : ''))"></option>
-                        </template>
+                    <select :name="`items[${i}][product_id]`"
+                            class="input input-sm js-txn-product"
+                            required
+                            x-init="$nextTick(() => mountProductSelect($el, line))">
                     </select>
                     <p class="txn-line__meta" x-show="product(line)">
                         <template x-if="available(line) !== null"><span>{{ __('Here') }}: <span x-text="available(line)"></span></span></template>

@@ -76,7 +76,8 @@
                     @endif
                     <div class="md:col-span-2">
                         <label class="label" for="f-supplier_ledger_id">{{ __('Supplier') }} <span class="text-accent">*</span></label>
-                        <select id="f-supplier_ledger_id" name="supplier_ledger_id" x-model="partyId" @change="partyChanged()" class="input" required>
+                        <select id="f-supplier_ledger_id" name="supplier_ledger_id" class="input js-party-select js-searchable" required
+                                data-placeholder="{{ __('Select supplier') }}">
                             <option value="">{{ __('Select supplier') }}</option>
                             @foreach ($suppliers as $s)
                                 <option value="{{ $s->id }}" @selected((string) old('supplier_ledger_id', $editing->supplier_ledger_id ?? '') === (string) $s->id)>

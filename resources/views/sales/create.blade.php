@@ -31,7 +31,8 @@
             <x-field name="invoice_date" type="date" :label="__('Invoice date')" :value="old('invoice_date', $voucherDate ?? now()->toDateString())" :min="optional($currentFinancialYear ?? null)?->start_date?->toDateString()" :max="optional($currentFinancialYear ?? null)?->end_date?->toDateString()" required />
             <div>
                 <label class="label" for="f-client_ledger_id">{{ __('Client') }}</label>
-                <select id="f-client_ledger_id" name="client_ledger_id" x-model="partyId" @change="partyChanged()" class="input">
+                <select id="f-client_ledger_id" name="client_ledger_id" class="input js-party-select js-searchable"
+                        data-placeholder="{{ __('Select customer') }}">
                     @foreach ($clients as $c)
                         <option value="{{ $c->id }}">{{ $c->display_name }}{{ $c->phone ? ' · '.$c->phone : '' }}</option>
                     @endforeach
@@ -66,7 +67,7 @@
                         <tr data-line>
                             <td>
                                 <select :name="`items[${i}][product_id]`"
-                                        class="input input-sm js-sale-product"
+                                        class="input input-sm js-txn-product js-sale-product"
                                         required
                                         x-init="$nextTick(() => mountProductSelect($el, line))"></select>
                                 <p class="mt-0.5 text-xs text-ink-soft" x-show="product(line)">

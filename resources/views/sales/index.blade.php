@@ -49,12 +49,11 @@
                                   opt.text = label;
                                   opt.selected = true;
                               }
-                              partyId = String($event.detail.id);
                               if ($event.detail.state_code) {
                                   parties[String($event.detail.id)] = $event.detail.state_code;
                               }
                               setPartyCreditDays($event.detail.id, $event.detail.credit_days);
-                              partyChanged();
+                              refreshPartySelect($event.detail.id);
                           }
                       }
                   "
@@ -98,7 +97,8 @@
                                 </button>
                             @endcan
                         </div>
-                        <select id="f-client_ledger_id" name="client_ledger_id" x-model="partyId" @change="partyChanged()" class="input" required>
+                        <select id="f-client_ledger_id" name="client_ledger_id" class="input js-party-select js-searchable" required
+                                data-placeholder="{{ __('Select customer') }}">
                             <option value="">{{ __('Select customer') }}</option>
                             @foreach ($clients as $c)
                                 <option value="{{ $c->id }}" @selected((string) old('client_ledger_id') === (string) $c->id)>

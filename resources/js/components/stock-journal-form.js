@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import { bindProductSelect2, unbindProductSelect2 } from './product-select2';
 
 /**
  * Stock journal desk lines (out / in / physical count).
@@ -114,6 +115,11 @@ Alpine.data('stockJournalForm', (config) => ({
     placeChanged(line) {
         line.batch_id = '';
         this.pick(line);
+        this.$nextTick(() => {
+            const idx = this.lines.indexOf(line);
+            const el = this.$root.querySelectorAll('[data-line]')[idx]?.querySelector('select.js-txn-product');
+            this.refreshProductSelect(el, line);
+        });
     },
 
     sideChanged(line) {
@@ -122,6 +128,43 @@ Alpine.data('stockJournalForm', (config) => ({
         line.batch_no = '';
         line.qty = '';
         line.counted_qty = '';
+        this.$nextTick(() => {
+            const idx = this.lines.indexOf(line);
+            const el = this.$root.querySelectorAll('[data-line]')[idx]?.querySelector('select.js-txn-product');
+            this.refreshProductSelect(el, line);
+        });
+    },
+
+    mountProductSelect(el, line) {
+        if (!el || !line) return;
+        const list = this.catalog(line);
+        const showStock = list.some((p) => p.stock != null);
+        bindProductSelect2(el, {
+            products: list,
+            value: line.product_id,
+            placeId: this.placeId(line),
+            placeholder: 'Select product',
+            showStock,
+            onChange: (id) => {
+                if (String(line.product_id || '') === String(id || '')) return;
+                line.product_id = id || '';
+                if (line.product_id) {
+                    this.pick(line);
+                    this.$nextTick(() => setTimeout(() => this.refreshProductSelect(el, line), 0));
+                } else {
+                    line.batch_id = '';
+                }
+            },
+        });
+    },
+
+    refreshProductSelect(el, line) {
+        if (!el || !line) return;
+        this.mountProductSelect(el, line);
+    },
+
+    destroyProductSelect(el) {
+        unbindProductSelect2(el);
     },
 
     add() {
@@ -129,6 +172,10 @@ Alpine.data('stockJournalForm', (config) => ({
     },
 
     remove(i) {
-        if (this.lines.length > 1) this.lines.splice(i, 1);
+        if (this.lines.length <= 1) return;
+        const rows = this.$root.querySelectorAll('[data-line]');
+        const el = rows[i]?.querySelector('select.js-txn-product');
+        this.destroyProductSelect(el);
+        this.lines.splice(i, 1);
     },
 }));

@@ -6,7 +6,7 @@
     <x-auto-filter>
         <div class="w-full sm:w-72">
             <label class="label" for="ledger_id">{{ __('Cash / Bank / UPI') }}</label>
-            <select id="ledger_id" name="ledger_id" class="input">
+            <select id="ledger_id" name="ledger_id" class="input js-searchable" data-placeholder="{{ __('Select account') }}">
                 @foreach ($instruments as $l)
                     <option value="{{ $l->id }}" @selected(optional($ledger)->id === $l->id)>{{ $l->display_name }} · {{ $l->type === 'cash' ? __('Cash') : __('Bank / UPI') }}</option>
                 @endforeach

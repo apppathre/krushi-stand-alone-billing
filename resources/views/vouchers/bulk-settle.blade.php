@@ -20,7 +20,8 @@
     <form method="GET" action="{{ $filterRoute }}" class="card card-body mb-4 grid gap-3 sm:grid-cols-3">
         <div class="sm:col-span-2">
             <label class="label" for="f-party_id">{{ $partyLabel }} <span class="text-accent">*</span></label>
-            <select id="f-party_id" name="party_id" class="input" required onchange="this.form.submit()">
+            <select id="f-party_id" name="party_id" class="input js-searchable" required
+                    data-placeholder="{{ __('Select…') }}" onchange="this.form.submit()">
                 <option value="">{{ __('Select…') }}</option>
                 @foreach ($parties as $p)
                     <option value="{{ $p->id }}" @selected((int) $partyId === (int) $p->id)>

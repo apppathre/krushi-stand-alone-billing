@@ -30,7 +30,8 @@
             <x-field name="purchase_date" type="date" :label="__('Purchase date')" :value="old('purchase_date', $voucherDate ?? now()->toDateString())" :min="optional($currentFinancialYear ?? null)?->start_date?->toDateString()" :max="optional($currentFinancialYear ?? null)?->end_date?->toDateString()" required />
             <div>
                 <label class="label" for="f-supplier_ledger_id">{{ __('Supplier') }} <span class="text-accent">*</span></label>
-                <select id="f-supplier_ledger_id" name="supplier_ledger_id" x-model="partyId" @change="partyChanged()" class="input" required>
+                <select id="f-supplier_ledger_id" name="supplier_ledger_id" class="input js-party-select js-searchable" required
+                        data-placeholder="{{ __('Select supplier') }}">
                     <option value="">{{ __('Select supplier') }}</option>
                     @foreach ($suppliers as $s)
                         <option value="{{ $s->id }}">{{ $s->display_name }}</option>
@@ -64,9 +65,11 @@
                     <template x-for="(line, i) in lines" :key="line.key">
                         <tr data-line>
                             <td>
-                                <select :name="`items[${i}][product_id]`" x-model="line.product_id" @change="pick(line)" class="input input-sm" required>
+                                <select :name="`items[${i}][product_id]`"
+                                        class="input input-sm js-txn-product"
+                                        required
+                                        x-init="$nextTick(() => mountProductSelect($el, line))">
                                     <option value="">{{ __('Select product') }}</option>
-                                    <template x-for="p in products" :key="p.id"><option :value="p.id" :selected="String(p.id) === String(line.product_id)" x-text="p.name + (p.code ? ' (' + p.code + ')' : '')"></option></template>
                                 </select>
                             </td>
                             <td><input :name="`items[${i}][batch_no]`" x-model="line.batch_no" class="input input-sm w-28" :required="product(line)?.batch_required" :disabled="product(line) && !product(line).batch_required"></td>

@@ -6,7 +6,7 @@
     <x-auto-filter>
         <div class="w-72">
             <label class="label" for="ledger_id">{{ __('Ledger') }}</label>
-            <select id="ledger_id" name="ledger_id" class="input">
+            <select id="ledger_id" name="ledger_id" class="input js-searchable" data-placeholder="{{ __('Select party') }}">
                 <option value="">{{ __('Select ledger') }}</option>
                 @foreach ($ledgers->groupBy('family') as $family => $group)
                     <optgroup label="{{ $family === 'party' ? __('Parties') : __('Account Books') }}">

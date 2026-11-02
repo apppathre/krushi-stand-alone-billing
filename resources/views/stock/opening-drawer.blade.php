@@ -33,11 +33,9 @@
 
         <div>
             <label class="label" for="f-product_id">{{ __('Product') }} <span class="text-accent">*</span></label>
-            <select id="f-product_id" name="items[0][product_id]" class="input" required x-model="productId" @change="pick()">
-                <option value="">{{ __('Select product') }}</option>
-                <template x-for="p in products" :key="p.id">
-                    <option :value="p.id" x-text="(p.code ? p.code + ' · ' : '') + p.name"></option>
-                </template>
+            <select id="f-product_id" name="items[0][product_id]" class="input js-txn-product" required
+                    x-init="$nextTick(() => mountProductSelect($el))"
+                    data-placeholder="{{ __('Select product') }}">
             </select>
         </div>
 

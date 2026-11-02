@@ -83,8 +83,10 @@ export function registerUiKit(Alpine) {
                 this.drawerLoading = false;
                 // Wait for Alpine x-html to paint drawer body, then bind forms / name→Marathi.
                 setTimeout(() => {
+                    const root = document.getElementById('ui-drawer-body');
                     bindAjaxFormInDrawer();
-                    window.KrushiNameMr?.bind(document.getElementById('ui-drawer-body'));
+                    window.KrushiNameMr?.bind(root);
+                    document.dispatchEvent(new CustomEvent('krushi:drawer-loaded', { detail: { root } }));
                 }, 30);
             } catch (e) {
                 this.closeDrawer();

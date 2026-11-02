@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import { bindProductSelect2 } from './product-select2';
 
 /** Opening stock bulk sheet — all items; only rows with qty post. */
 Alpine.data('openingBulk', (cfg) => ({
@@ -79,5 +80,20 @@ Alpine.data('openingDrawer', (cfg) => ({
             this.mfgDate = '';
             this.expiryDate = '';
         }
+    },
+
+    mountProductSelect(el) {
+        if (!el) return;
+        bindProductSelect2(el, {
+            products: this.products,
+            value: this.productId,
+            placeholder: 'Select product',
+            showStock: false,
+            onChange: (id) => {
+                if (String(this.productId || '') === String(id || '')) return;
+                this.productId = id || '';
+                this.pick();
+            },
+        });
     },
 }));

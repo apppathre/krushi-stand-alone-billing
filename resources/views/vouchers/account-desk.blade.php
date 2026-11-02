@@ -64,7 +64,7 @@
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label class="label" for="f-cash_ledger_id">{{ $kind === 'payment' ? __('Paid from') : __('Received in') }}</label>
-                            <select id="f-cash_ledger_id" name="cash_ledger_id" class="input" required>
+                            <select id="f-cash_ledger_id" name="cash_ledger_id" class="input js-searchable" required data-placeholder="{{ __('Select…') }}">
                                 <option value="">{{ __('Select…') }}</option>
                                 @foreach ($cashLedgers as $id => $label)
                                     <option value="{{ $id }}" @selected((string) old('cash_ledger_id') === (string) $id)>{{ $label }}</option>
@@ -76,7 +76,7 @@
                             <label class="label" for="f-account_ledger_id">
                                 {{ $kind === 'payment' ? __('Charge to (rent / salary / expense / party)') : __('Credit to (income / party)') }}
                             </label>
-                            <select id="f-account_ledger_id" name="account_ledger_id" class="input" required>
+                            <select id="f-account_ledger_id" name="account_ledger_id" class="input js-searchable" required data-placeholder="{{ __('Select…') }}">
                                 <option value="">{{ __('Select…') }}</option>
                                 @foreach ($accountLedgers as $id => $label)
                                     <option value="{{ $id }}" @selected((string) old('account_ledger_id') === (string) $id)>{{ $label }}</option>
@@ -88,7 +88,7 @@
                     @if ($kind === 'payment' && $staff->isNotEmpty())
                         <div>
                             <label class="label" for="f-staff_user_id">{{ __('Staff (for salary)') }}</label>
-                            <select id="f-staff_user_id" name="staff_user_id" class="input">
+                            <select id="f-staff_user_id" name="staff_user_id" class="input js-searchable" data-placeholder="{{ __('Optional') }}">
                                 <option value="">{{ __('Optional') }}</option>
                                 @foreach ($staff as $u)
                                     <option value="{{ $u->id }}" @selected((string) old('staff_user_id') === (string) $u->id)>{{ $u->name }}</option>
@@ -100,7 +100,7 @@
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label class="label" for="f-debit_ledger_id">{{ __('Debit (Dr)') }}</label>
-                            <select id="f-debit_ledger_id" name="debit_ledger_id" class="input" required>
+                            <select id="f-debit_ledger_id" name="debit_ledger_id" class="input js-searchable" required data-placeholder="{{ __('Select…') }}">
                                 <option value="">{{ __('Select…') }}</option>
                                 @foreach ($accountLedgers as $id => $label)
                                     <option value="{{ $id }}" @selected((string) old('debit_ledger_id') === (string) $id)>{{ $label }}</option>
@@ -110,7 +110,7 @@
                         </div>
                         <div>
                             <label class="label" for="f-credit_ledger_id">{{ __('Credit (Cr)') }}</label>
-                            <select id="f-credit_ledger_id" name="credit_ledger_id" class="input" required>
+                            <select id="f-credit_ledger_id" name="credit_ledger_id" class="input js-searchable" required data-placeholder="{{ __('Select…') }}">
                                 <option value="">{{ __('Select…') }}</option>
                                 @foreach ($accountLedgers as $id => $label)
                                     <option value="{{ $id }}" @selected((string) old('credit_ledger_id') === (string) $id)>{{ $label }}</option>
@@ -124,7 +124,7 @@
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label class="label" for="f-from_ledger_id">{{ __('From (out)') }}</label>
-                            <select id="f-from_ledger_id" name="from_ledger_id" class="input" required>
+                            <select id="f-from_ledger_id" name="from_ledger_id" class="input js-searchable" required data-placeholder="{{ __('Select…') }}">
                                 <option value="">{{ __('Select…') }}</option>
                                 @foreach ($cashLedgers as $id => $label)
                                     <option value="{{ $id }}" @selected((string) old('from_ledger_id') === (string) $id)>{{ $label }}</option>
@@ -134,7 +134,7 @@
                         </div>
                         <div>
                             <label class="label" for="f-to_ledger_id">{{ __('To (in)') }}</label>
-                            <select id="f-to_ledger_id" name="to_ledger_id" class="input" required>
+                            <select id="f-to_ledger_id" name="to_ledger_id" class="input js-searchable" required data-placeholder="{{ __('Select…') }}">
                                 <option value="">{{ __('Select…') }}</option>
                                 @foreach ($cashLedgers as $id => $label)
                                     <option value="{{ $id }}" @selected((string) old('to_ledger_id') === (string) $id)>{{ $label }}</option>

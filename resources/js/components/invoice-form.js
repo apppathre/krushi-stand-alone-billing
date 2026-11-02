@@ -1,5 +1,11 @@
 import Alpine from 'alpinejs';
-import { bindProductSelect2, productStockLabel, unbindProductSelect2 } from './product-select2';
+import {
+    bindProductSelect2,
+    enhanceSelect,
+    productStockLabel,
+    refreshEnhancedSelect,
+    unbindProductSelect2,
+} from './product-select2';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
@@ -44,6 +50,7 @@ Alpine.data('invoiceForm', (config) => ({
             this.creditDaysBill = this.defaultCreditDays;
         }
         this.onSettlementChange(true);
+        this.$nextTick(() => this.mountPartySelect());
     },
 
     onSettlementChange(silent = false) {
@@ -294,25 +301,64 @@ Alpine.data('invoiceForm', (config) => ({
         line.gst_overridden = false;
     },
 
-    /** Select2 product picker (sale): shows name + current stock; value still posts as product_id. */
+    /** Select2 product label helper. */
     productOptionLabel(product, line = null) {
-        return productStockLabel(product, line ? this.placeId(line) : null);
+        return productStockLabel(product, line ? this.placeId(line) : null, {
+            showStock: this.mode === 'sale',
+        });
     },
 
+    partySelectEl() {
+        return this.$root?.querySelector?.('select.js-party-select')
+            || document.getElementById('f-client_ledger_id')
+            || document.getElementById('f-supplier_ledger_id');
+    },
+
+    /** Customer / supplier Select2 (searchable on mobile). */
+    mountPartySelect() {
+        const el = this.partySelectEl();
+        if (!el) return;
+        enhanceSelect(el, {
+            allowClear: !el.required,
+            onChange: (id) => {
+                if (String(this.partyId || '') === String(id || '')) return;
+                this.partyId = id || '';
+                this.partyChanged();
+            },
+        });
+    },
+
+    /** After "Add customer/supplier" drawer inserts an option. */
+    refreshPartySelect(id = null) {
+        const el = this.partySelectEl();
+        if (!el) return;
+        refreshEnhancedSelect(el, id ?? this.partyId);
+        if (id) {
+            this.partyId = String(id);
+            this.partyChanged();
+        }
+    },
+
+    /**
+     * Product Select2 on every invoice mode (sale shows stock; purchase/PO searchable name/code).
+     */
     mountProductSelect(el, line) {
-        if (this.mode !== 'sale' || !el || !line) return;
+        if (!el || !line) return;
+        const showStock = this.mode === 'sale';
         bindProductSelect2(el, {
             products: this.products,
             value: line.product_id,
             placeId: this.placeId(line),
             placeholder: 'Select product',
+            showStock,
             onChange: (id) => {
                 if (String(line.product_id || '') === String(id || '')) return;
                 line.product_id = id || '';
                 if (line.product_id) {
                     this.pick(line);
-                    // Defer remount so Select2 finishes its change cycle; refresh place stock in labels.
-                    this.$nextTick(() => setTimeout(() => this.refreshProductSelect(el, line), 0));
+                    if (showStock) {
+                        this.$nextTick(() => setTimeout(() => this.refreshProductSelect(el, line), 0));
+                    }
                 } else {
                     line.batch_id = '';
                     line.rate = 0;
@@ -323,7 +369,7 @@ Alpine.data('invoiceForm', (config) => ({
     },
 
     refreshProductSelect(el, line) {
-        if (this.mode !== 'sale' || !el || !line) return;
+        if (!el || !line) return;
         this.mountProductSelect(el, line);
     },
 
@@ -336,7 +382,7 @@ Alpine.data('invoiceForm', (config) => ({
         this.$nextTick(() => {
             const rows = this.$root.querySelectorAll('[data-line]');
             const last = rows[rows.length - 1];
-            const productSelect = last?.querySelector('select.js-sale-product');
+            const productSelect = last?.querySelector('select.js-txn-product, select.js-sale-product');
             (productSelect || last?.querySelector('select'))?.focus();
         });
     },
@@ -344,7 +390,7 @@ Alpine.data('invoiceForm', (config) => ({
     remove(i) {
         if (this.lines.length <= 1) return;
         const rows = this.$root.querySelectorAll('[data-line]');
-        const el = rows[i]?.querySelector('select.js-sale-product');
+        const el = rows[i]?.querySelector('select.js-txn-product, select.js-sale-product');
         this.destroyProductSelect(el);
         this.lines.splice(i, 1);
     },

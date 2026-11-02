@@ -33,7 +33,7 @@
                     <label class="txn-line__label label">{{ __('Product') }}</label>
                     {{-- Select2: searchable product + current stock qty in label; native name keeps save working. --}}
                     <select :name="`items[${i}][product_id]`"
-                            class="input input-sm js-sale-product"
+                            class="input input-sm js-txn-product js-sale-product"
                             required
                             x-init="$nextTick(() => mountProductSelect($el, line))">
                     </select>
