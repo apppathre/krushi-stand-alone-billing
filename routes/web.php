@@ -167,6 +167,7 @@ Route::middleware('auth')->group(function () {
         Route::get('{sale}', [SaleController::class, 'show'])->name('show');
         Route::get('{sale}/details', [SaleController::class, 'details'])->name('details');
         Route::get('{sale}/pdf', [SaleController::class, 'pdf'])->name('pdf');
+        Route::get('{sale}/print', [SaleController::class, 'printPreview'])->name('print');
         Route::get('{sale}/dc', [SaleController::class, 'dc'])->name('dc');
         Route::post('{sale}/payments', [SaleController::class, 'payment'])->name('payments.store');
         Route::delete('{sale}', [SaleController::class, 'cancel'])->name('cancel');

@@ -11,6 +11,7 @@ import './components/stock-journal-form';
 import './components/bulk-items';
 import './components/dashboard-board';
 import './components/party-outreach';
+import './components/invoice-print-menu';
 import { registerUiKit } from './components/ui-kit';
 import { registerEnToMr } from './components/en-to-mr';
 

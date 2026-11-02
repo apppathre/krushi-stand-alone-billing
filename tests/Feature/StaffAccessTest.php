@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Godown;
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,20 +16,27 @@ class StaffAccessTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (! User::where('email', 'owner@krushi.local')->exists()) {
+        if (! User::where('email', UserSeeder::OWNER_EMAIL)->exists()) {
             $this->seed();
         }
     }
 
     private function owner(): User
     {
-        return User::where('email', 'owner@krushi.local')->firstOrFail();
+        return User::where('email', UserSeeder::OWNER_EMAIL)->firstOrFail();
     }
 
     public function test_staff_password_drawer_and_toggle(): void
     {
         $owner = $this->owner();
-        $staff = User::where('email', 'cashier@krushi.local')->firstOrFail();
+        $staff = User::factory()->create([
+            'email' => 'cashier@test.local',
+            'role_id' => Role::where('slug', 'cashier')->value('id') ?? Role::where('slug', 'owner')->value('id'),
+            'is_active' => true,
+        ]);
+        if ($gid = Godown::query()->value('id')) {
+            $staff->godowns()->sync([$gid]);
+        }
 
         $this->actingAs($owner)
             ->get(route('users.password', $staff))

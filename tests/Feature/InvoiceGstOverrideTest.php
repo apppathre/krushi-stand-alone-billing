@@ -17,14 +17,14 @@ class InvoiceGstOverrideTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (! User::where('email', 'owner@krushi.local')->exists()) {
+        if (! User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->exists()) {
             $this->seed();
         }
     }
 
     public function test_sale_line_can_override_gst_without_changing_product_master(): void
     {
-        $this->actingAs(User::where('email', 'owner@krushi.local')->firstOrFail());
+        $this->actingAs(User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail());
         $godown = Godown::first();
         $supplier = Ledger::where('type', 'supplier')->first();
         $walkInId = (int) (\App\Models\AccountMap::current()->walk_in_ledger_id ?: 0);

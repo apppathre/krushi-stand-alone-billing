@@ -19,14 +19,14 @@ class TallyExportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (! User::where('email', 'owner@krushi.local')->exists()) {
+        if (! User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->exists()) {
             $this->seed();
         }
     }
 
     public function test_tally_export_page_and_xml_download(): void
     {
-        $owner = User::where('email', 'owner@krushi.local')->firstOrFail();
+        $owner = User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail();
         $this->actingAs($owner);
 
         // Ensure AccessSeeder menus include tally export for owner
@@ -108,7 +108,7 @@ class TallyExportTest extends TestCase
 
     public function test_tally_xml_import_masters_and_voucher(): void
     {
-        $owner = User::where('email', 'owner@krushi.local')->firstOrFail();
+        $owner = User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail();
         $this->actingAs($owner);
         $this->seed(\Database\Seeders\AccessSeeder::class);
         User::forgetMenuCache();
@@ -181,7 +181,7 @@ XML;
 
     public function test_account_voucher_desks_and_new_reports_render(): void
     {
-        $owner = User::where('email', 'owner@krushi.local')->firstOrFail();
+        $owner = User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail();
         $this->actingAs($owner);
         $this->seed(\Database\Seeders\AccessSeeder::class);
         User::forgetMenuCache();

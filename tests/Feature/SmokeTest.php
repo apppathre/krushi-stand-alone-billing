@@ -17,14 +17,14 @@ class SmokeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (! User::where('email', 'owner@krushi.local')->exists()) {
+        if (! User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->exists()) {
             $this->seed();
         }
     }
 
     private function owner(): User
     {
-        return User::where('email', 'owner@krushi.local')->firstOrFail();
+        return User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail();
     }
 
     public function test_pages_render_for_owner(): void

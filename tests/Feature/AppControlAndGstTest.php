@@ -17,14 +17,14 @@ class AppControlAndGstTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (! User::where('email', 'owner@krushi.local')->exists()) {
+        if (! User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->exists()) {
             $this->seed();
         }
     }
 
     public function test_app_control_defaults_apply_to_new_client_and_gst_report_renders(): void
     {
-        $owner = User::where('email', 'owner@krushi.local')->firstOrFail();
+        $owner = User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail();
         $this->actingAs($owner);
 
         $this->put(route('settings.app-control.update'), [

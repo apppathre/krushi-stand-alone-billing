@@ -47,6 +47,10 @@
                         <input type="checkbox" name="full_seed" value="1" class="checkbox" checked>
                         {{ __('Full seed (company, menus, ledgers, sample catalog, owner user)') }}
                     </label>
+                    <p class="text-xs text-ink-soft">
+                        {{ __('Owner login after install') }}:
+                        <span class="font-semibold text-ink">{{ \Database\Seeders\UserSeeder::OWNER_EMAIL }}</span>
+                    </p>
                 @endunless
                 <button type="submit" class="btn-primary w-full" @disabled(! $connected)>
                     {{ $installed ? __('Apply pending updates') : __('Install now') }}

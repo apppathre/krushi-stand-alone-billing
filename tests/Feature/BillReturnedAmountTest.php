@@ -20,14 +20,14 @@ class BillReturnedAmountTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (! User::where('email', 'owner@krushi.local')->exists()) {
+        if (! User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->exists()) {
             $this->seed();
         }
     }
 
     public function test_credit_note_reduces_invoice_balance_for_receipts(): void
     {
-        $owner = User::where('email', 'owner@krushi.local')->firstOrFail();
+        $owner = User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail();
         $this->actingAs($owner);
 
         $godown = Godown::firstOrFail();

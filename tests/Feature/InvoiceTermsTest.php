@@ -18,14 +18,14 @@ class InvoiceTermsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (! User::where('email', 'owner@krushi.local')->exists()) {
+        if (! User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->exists()) {
             $this->seed();
         }
     }
 
     public function test_sale_saves_custom_terms_and_prints_them(): void
     {
-        $this->actingAs(User::where('email', 'owner@krushi.local')->firstOrFail());
+        $this->actingAs(User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail());
         CompanyProfile::current()->update([
             'invoice_terms' => '<p>Shop default terms</p>',
         ]);

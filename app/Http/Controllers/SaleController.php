@@ -16,6 +16,7 @@ use App\Support\LedgerBalance;
 use App\Support\PrintFormats;
 use App\Support\TermsHtml;
 use App\Support\WorkContext;
+use App\Support\PrintFonts;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -234,18 +235,66 @@ class SaleController extends Controller
             ? LedgerBalance::asOf((int) $sale->client_ledger_id)
             : ['amount' => 0.0, 'side' => 'dr', 'label' => '0.00 Dr', 'signed' => 0.0];
 
+        // Marathi PDF needs Noto Sans Devanagari — fall back to English if font missing.
+        if ($lang === 'mr' && ! PrintFonts::ensureInstalled()) {
+            $lang = 'en';
+        }
+
         $pdf = Pdf::loadView($meta['view'], [
             'sale' => $sale,
             'company' => $company,
             'printSize' => $size,
             'printFormat' => $format,
             'printLang' => $lang,
+            'printFontFamily' => PrintFonts::cssFamily($lang),
             'partyBalance' => $partyBal,
         ])->setPaper($paper['paper'], $paper['orientation']);
+        PrintFonts::applyToPdf($pdf);
 
         $file = 'invoice-'.str_replace('/', '-', $sale->invoice_no).'-'.$format.'-'.$size.'.pdf';
 
         return $request->boolean('download') ? $pdf->download($file) : $pdf->stream($file);
+    }
+
+    /**
+     * Browser print preview (HTML + web Devanagari fonts).
+     * Best option when DomPDF Marathi font is missing, or for staff who prefer Ctrl+P.
+     */
+    public function printPreview(Request $request, Sale $sale)
+    {
+        $this->authorizeGodown($request, $sale->godown_id);
+        $company = CompanyProfile::current();
+        $format = (string) $request->input('format', PrintFormats::defaultSaleFormat($company));
+        $meta = PrintFormats::resolveSale($format);
+        $size = (string) $request->input('size', $meta['default_size'] ?? 'a4');
+        $lang = (string) $request->input('lang', PrintFormats::defaultSaleLang($company));
+        if (! in_array($lang, ['en', 'mr'], true)) {
+            $lang = 'en';
+        }
+
+        $sale->load([
+            'items.product.unit',
+            'items.product.manufacturer',
+            'items.batch',
+            'client.area',
+            'godown',
+            'payments',
+        ]);
+
+        $partyBal = $sale->client_ledger_id
+            ? LedgerBalance::asOf((int) $sale->client_ledger_id)
+            : ['amount' => 0.0, 'side' => 'dr', 'label' => '0.00 Dr', 'signed' => 0.0];
+
+        return view('sales.print-browser', [
+            'sale' => $sale,
+            'company' => $company,
+            'printSize' => $size,
+            'printFormat' => $format,
+            'printLang' => $lang,
+            'partyBalance' => $partyBal,
+            'pdfFontOk' => PrintFonts::marathiAvailable(),
+            'pdfMeta' => $meta,
+        ]);
     }
 
     /** Delivery challan / note — place + rack pick locations (no tax columns). */
@@ -276,12 +325,18 @@ class SaleController extends Controller
             default => ['paper' => 'a4', 'orientation' => 'portrait'],
         };
 
+        if ($lang === 'mr' && ! PrintFonts::ensureInstalled()) {
+            $lang = 'en';
+        }
+
         $pdf = Pdf::loadView('sales.pdf-dc', [
             'sale' => $sale,
             'company' => $company,
             'printSize' => $size,
             'printLang' => $lang,
+            'printFontFamily' => PrintFonts::cssFamily($lang),
         ])->setPaper($paper['paper'], $paper['orientation']);
+        PrintFonts::applyToPdf($pdf);
 
         $file = 'dc-'.str_replace('/', '-', $sale->invoice_no).'-'.$size.'.pdf';
 

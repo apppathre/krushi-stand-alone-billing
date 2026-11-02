@@ -176,6 +176,7 @@ class AppMaintenanceService
                 ['LedgerSeeder', __('Default ledgers (rent, salary, interest) synced.')],
                 ['TaxCatalogSeeder', __('GST slabs & HSN catalog upserted.')],
                 ['AreaSeeder', __('Areas upserted.')],
+                ['CatalogSeeder', __('Manufacturers, packings & catalog items upserted.')],
             ] as [$class, $okMsg]) {
                 try {
                     Artisan::call('db:seed', [

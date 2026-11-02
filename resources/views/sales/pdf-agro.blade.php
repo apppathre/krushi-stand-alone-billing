@@ -14,7 +14,8 @@
     <title>{{ $sale->invoice_no }}</title>
     <style>
         @page { margin: 12px 14px; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 8.5px; color: #111; }
+        @include('partials.pdf-font-css')
+        body { font-size: 8.5px; color: #111; }
         .red { color: #b91c1c; }
         .muted { color: #555; }
         .right { text-align: right; }

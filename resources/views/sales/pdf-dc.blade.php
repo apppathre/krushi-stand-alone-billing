@@ -12,7 +12,8 @@
     <title>{{ $t('Delivery Challan', 'डिलिव्हरी चलन') }} · {{ $sale->invoice_no }}</title>
     <style>
         @page { margin: {{ $size === 'quarter' ? '10px 12px' : ($size === 'half' ? '14px 16px' : '24px 28px') }}; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: {{ $size === 'quarter' ? '8px' : ($size === 'half' ? '9px' : '10px') }}; color: #1F2A24; }
+        @include('partials.pdf-font-css')
+        body { font-size: {{ $size === 'quarter' ? '8px' : ($size === 'half' ? '9px' : '10px') }}; color: #1F2A24; }
         h1 { font-size: {{ $size === 'quarter' ? '14px' : ($size === 'half' ? '16px' : '20px') }}; margin: 0; color: #214D39; }
         .muted { color: #5B6A61; }
         .right { text-align: right; }

@@ -21,14 +21,14 @@ class StockReverseIdempotentTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (! User::where('email', 'owner@krushi.local')->exists()) {
+        if (! User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->exists()) {
             $this->seed();
         }
     }
 
     public function test_stock_journal_edit_twice_keeps_qty_correct(): void
     {
-        $owner = User::where('email', 'owner@krushi.local')->firstOrFail();
+        $owner = User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail();
         $this->actingAs($owner);
 
         $godown = Godown::firstOrFail();

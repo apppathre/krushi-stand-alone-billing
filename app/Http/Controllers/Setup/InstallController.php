@@ -55,7 +55,7 @@ class InstallController extends Controller
 
         $message = $this->maintenance->isInstalled()
             ? ($fullSeed
-                ? __('Setup complete. Sign in with the seeded owner account.')
+                ? __('Setup complete. Sign in as :email', ['email' => \Database\Seeders\UserSeeder::OWNER_EMAIL])
                 : __('Database updates applied. Sign in to continue.'))
             : __('Setup ran, but install check failed. Verify .env and try again.');
 

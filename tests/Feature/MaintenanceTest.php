@@ -14,14 +14,14 @@ class MaintenanceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (! User::where('email', 'owner@krushi.local')->exists()) {
+        if (! User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->exists()) {
             $this->seed();
         }
     }
 
     public function test_owner_can_open_maintenance_and_apply_indexes(): void
     {
-        $owner = User::where('email', 'owner@krushi.local')->firstOrFail();
+        $owner = User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail();
         $this->actingAs($owner);
 
         $this->get(route('maintenance.index'))
@@ -47,7 +47,7 @@ class MaintenanceTest extends TestCase
 
     public function test_profile_shows_phone_locale_and_password_tabs(): void
     {
-        $owner = User::where('email', 'owner@krushi.local')->firstOrFail();
+        $owner = User::where('email', \Database\Seeders\UserSeeder::OWNER_EMAIL)->firstOrFail();
         $this->actingAs($owner);
 
         $this->get(route('profile.edit'))
