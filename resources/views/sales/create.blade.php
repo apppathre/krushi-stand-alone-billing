@@ -65,15 +65,14 @@
                     <template x-for="(line, i) in lines" :key="line.key">
                         <tr data-line>
                             <td>
-                                <select :name="`items[${i}][product_id]`" x-model="line.product_id" @change="pick(line)" class="input input-sm" required>
-                                    <option value="">{{ __('Select product') }}</option>
-                                    <template x-for="p in products" :key="p.id">
-                                        <option :value="p.id" :selected="String(p.id) === String(line.product_id)" x-text="p.name + ' (' + p.stock + ' ' + (p.unit || '') + ')'"></option>
-                                    </template>
-                                </select>
+                                <select :name="`items[${i}][product_id]`"
+                                        class="input input-sm js-sale-product"
+                                        required
+                                        x-init="$nextTick(() => mountProductSelect($el, line))"></select>
                                 <p class="mt-0.5 text-xs text-ink-soft" x-show="product(line)">
                                     HSN <span x-text="product(line)?.hsn || '-'"></span>
-                                    <template x-if="available(line) !== null"><span> &middot; {{ __('Available') }}: <span x-text="available(line)"></span></span></template>
+                                    <template x-if="available(line) !== null"><span> · {{ __('Stock here') }}: <strong x-text="available(line)"></strong></span></template>
+                                    <template x-if="product(line)"><span> · {{ __('All places') }}: <strong x-text="product(line)?.stock ?? 0"></strong></span></template>
                                 </p>
                             </td>
                             <td>
