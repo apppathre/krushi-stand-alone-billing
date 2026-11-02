@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\RespondsForDrawer;
+use App\Mail\UserWelcomeMail;
 use App\Models\Godown;
+use App\Models\MailSetting;
 use App\Models\Menu;
 use App\Models\Role;
 use App\Models\User;
@@ -12,6 +14,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
@@ -39,6 +43,8 @@ class UserController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         $data = $this->validated($request);
+        $plainPassword = (string) ($data['password'] ?? '');
+
         $user = DB::transaction(function () use ($data, $request) {
             $user = User::create($data + ['email_verified_at' => now()]);
             $this->syncRelations($user, $request);
@@ -46,7 +52,11 @@ class UserController extends Controller
             return $user;
         });
 
-        return $this->savedResponse($request, __('User saved.'), 'users.index');
+        return $this->savedResponse(
+            $request,
+            $this->withWelcomeMailNote(__('User saved.'), $user, $plainPassword),
+            'users.index'
+        );
     }
 
     public function edit(User $user)
@@ -98,7 +108,36 @@ class UserController extends Controller
         ]);
         $user->update(['password' => $data['password']]);
 
-        return $this->savedResponse($request, __('Password updated.'), 'users.index');
+        return $this->savedResponse(
+            $request,
+            $this->withWelcomeMailNote(__('Password updated.'), $user, $data['password']),
+            'users.index'
+        );
+    }
+
+    /**
+     * Append welcome-mail status. Never blocks saving if SMTP is off or send fails.
+     */
+    private function withWelcomeMailNote(string $base, User $user, string $plainPassword): string
+    {
+        if ($plainPassword === '' || blank($user->email)) {
+            return $base;
+        }
+
+        $mail = MailSetting::current();
+        if (! $mail->is_enabled || blank($mail->host)) {
+            return $base.' '.__('Welcome email was not sent — enable SMTP under Settings → Mail.');
+        }
+
+        try {
+            Mail::to($user->email)->send(new UserWelcomeMail($user, $plainPassword));
+        } catch (\Throwable $e) {
+            Log::warning('Welcome mail failed for user '.$user->id.': '.$e->getMessage());
+
+            return $base.' '.__('Welcome email failed: :msg', ['msg' => $e->getMessage()]);
+        }
+
+        return $base.' '.__('Welcome email sent to :email.', ['email' => $user->email]);
     }
 
     public function toggleStatus(Request $request, User $user): JsonResponse|RedirectResponse
