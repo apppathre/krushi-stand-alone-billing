@@ -1,8 +1,15 @@
 import $ from 'jquery';
-import 'select2';
+import select2Factory from 'select2';
 import 'select2/dist/css/select2.min.css';
 
+// Vite/ESM: select2 exports a factory — must bind it to this jQuery instance.
 window.$ = window.jQuery = $;
+if (typeof select2Factory === 'function' && (!$.fn || !$.fn.select2)) {
+    select2Factory(window, $);
+}
+if (!$.fn?.select2) {
+    console.error('Select2 failed to load on jQuery — product search will use native select.');
+}
 
 /**
  * Format product option text with current stock qty (place-aware when possible).
@@ -23,11 +30,25 @@ export function productStockLabel(product, placeId = null) {
     return `${product.name}${code} · ${qtyText}${unit ? ` ${unit}` : ''}`.trim();
 }
 
+function fillNativeOptions(el, products, value, placeId, placeholder) {
+    el.innerHTML = '';
+    const empty = new Option(placeholder, '', !value, !value);
+    el.appendChild(empty);
+    products.forEach((p) => {
+        const selected = String(p.id) === String(value);
+        el.appendChild(new Option(productStockLabel(p, placeId), String(p.id), selected, selected));
+    });
+}
+
 function destroySelect2(el) {
     const $el = $(el);
-    if ($el.hasClass('select2-hidden-accessible')) {
+    if ($.fn?.select2 && $el.hasClass('select2-hidden-accessible')) {
         $el.off('.krushiProduct');
-        $el.select2('destroy');
+        try {
+            $el.select2('destroy');
+        } catch (e) {
+            // ignore destroy races
+        }
     }
 }
 
@@ -45,35 +66,42 @@ export function bindProductSelect2(el, {
     if (!el) return;
 
     destroySelect2(el);
+    fillNativeOptions(el, products, value, placeId, placeholder);
 
     const $el = $(el);
-    $el.empty();
-    $el.append(new Option(placeholder, '', !value, !value));
+    $el.off('.krushiProduct');
 
-    products.forEach((p) => {
-        const selected = String(p.id) === String(value);
-        const opt = new Option(productStockLabel(p, placeId), String(p.id), selected, selected);
-        opt.dataset.stock = String(p.stock ?? 0);
-        $el.append(opt);
-    });
+    if (!$.fn?.select2) {
+        // Fallback: native select still has stock labels and posts product_id.
+        $el.on('change.krushiProduct', function () {
+            if (typeof onChange === 'function') onChange($(this).val() || '');
+        });
+        return;
+    }
 
-    $el.select2({
-        width: '100%',
-        placeholder,
-        allowClear: true,
-        dropdownAutoWidth: false,
-        matcher(params, data) {
-            if ($.trim(params.term || '') === '') return data;
-            if (!data.id || !data.text) return null;
-            const term = params.term.toLowerCase();
-            return data.text.toLowerCase().includes(term) ? data : null;
-        },
-    });
+    try {
+        $el.select2({
+            width: '100%',
+            placeholder,
+            allowClear: true,
+            dropdownParent: $(el.closest('.txn-line') || el.parentElement || document.body),
+            matcher(params, data) {
+                if ($.trim(params.term || '') === '') return data;
+                if (typeof data.text === 'undefined') return null;
+                // Keep placeholder / optgroups searchable path stable.
+                if (!data.id) return data;
+                const term = String(params.term).toLowerCase();
+                return String(data.text).toLowerCase().includes(term) ? data : null;
+            },
+        });
 
-    if (value) {
-        $el.val(String(value)).trigger('change.select2');
-    } else {
-        $el.val(null).trigger('change.select2');
+        if (value) {
+            $el.val(String(value)).trigger('change.select2');
+        } else {
+            $el.val(null).trigger('change.select2');
+        }
+    } catch (e) {
+        console.error('Select2 init failed', e);
     }
 
     $el.on('change.krushiProduct', function () {
