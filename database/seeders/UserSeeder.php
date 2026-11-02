@@ -19,10 +19,21 @@ class UserSeeder extends Seeder
         $godowns = Godown::pluck('id', 'code');
         $allGodownIds = $godowns->values()->all();
 
+        // After a table wipe, roles may be empty — create owner role so login SQL/seed never no-ops.
+        $ownerRole = Role::firstOrCreate(
+            ['slug' => 'owner'],
+            [
+                'name' => 'Owner',
+                'name_mr' => 'मालक',
+                'description' => 'Full access to everything',
+                'is_system' => true,
+            ],
+        );
+
         $user = User::updateOrCreate(['email' => self::OWNER_EMAIL], [
             'name' => 'Shop Owner',
             'password' => self::OWNER_PASSWORD, // hashed by the model cast
-            'role_id' => Role::where('slug', 'owner')->value('id'),
+            'role_id' => $ownerRole->id,
             'email_verified_at' => now(),
             'is_active' => true,
             'locale' => 'en',

@@ -71,6 +71,25 @@
                 </button>
             </form>
 
+            @if ($needsOwner ?? false)
+                <details class="rounded-lg border border-sage bg-white px-3 py-2 text-xs text-ink-soft">
+                    <summary class="cursor-pointer font-semibold text-ink">{{ __('phpMyAdmin fallback (if Install button fails)') }}</summary>
+                    <p class="mt-2">{{ __('Your earlier INSERT put 0 rows because roles had no owner slug. Run both statements:') }}</p>
+                    <pre class="mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded bg-cream p-2 text-[11px] text-ink">INSERT INTO roles (name, name_mr, slug, description, is_system, created_at, updated_at)
+VALUES ('Owner', 'मालक', 'owner', 'Full access to everything', 1, NOW(), NOW())
+ON DUPLICATE KEY UPDATE name = VALUES(name), is_system = 1;
+
+INSERT INTO users (name, email, password, role_id, is_active, email_verified_at, locale, created_at, updated_at)
+SELECT 'Shop Owner', 'appathre@gmail.com',
+  '$2y$12$Frs4qrQtZ1hgLr4SLlHJ5uadkuXZ85sGJP1vuKt0Bv8j3TbIMjKZ6',
+  id, 1, NOW(), 'en', NOW(), NOW()
+FROM roles WHERE slug = 'owner' LIMIT 1
+ON DUPLICATE KEY UPDATE
+  password = VALUES(password), is_active = 1, role_id = VALUES(role_id), name = VALUES(name);</pre>
+                    <p class="mt-2">{{ __('Then login') }}: appathre@gmail.com / Prasad@123</p>
+                </details>
+            @endif
+
             <p class="text-center text-xs text-ink-soft">
                 <a href="{{ route('login') }}" class="text-leaf hover:underline">{{ __('Back to login') }}</a>
             </p>
