@@ -5,6 +5,12 @@
 
     <x-page-head class="mb-3" :title="__('Stock preview')" :blurb="__('Large view for the counter. For a TV without login, use Live stock + passkey.')">
         <a href="{{ route('stock.index', ['godown_id' => $gid]) }}" class="btn-secondary btn-sm">{{ __('Stock list') }}</a>
+        @can('menu', ['products', 'edit'])
+            <button type="button" class="btn-secondary btn-sm"
+                    onclick="KrushiDrawer.open('{{ route('products.live-board') }}', '{{ __('Live screen items') }}', '40rem')">
+                <x-icon name="stock" class="h-4 w-4" /> {{ __('Live screen items') }}
+            </button>
+        @endcan
         @if (auth()->user()->canMenu('settings_app_control', 'view'))
             <a href="{{ route('settings.app-control') }}#live-stock" class="btn-secondary btn-sm">{{ __('Live stock settings') }}</a>
         @endif

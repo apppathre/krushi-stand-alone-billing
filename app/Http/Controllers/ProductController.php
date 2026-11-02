@@ -191,6 +191,62 @@ class ProductController extends Controller
         return $this->savedResponse($request, __('Product saved.'), 'products.index');
     }
 
+    /** Side drawer: pick which items appear on the live stock TV board. */
+    public function liveBoardPicker()
+    {
+        $items = Product::query()
+            ->with('category:id,name,name_mr')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'name_mr', 'category_id', 'show_on_live_stock'])
+            ->map(fn (Product $p) => [
+                'id' => $p->id,
+                'code' => $p->code,
+                'name' => $p->display_name,
+                'category_id' => $p->category_id,
+                'category' => $p->category?->display_name,
+                'show' => (bool) $p->show_on_live_stock,
+            ])
+            ->values()
+            ->all();
+
+        return view('products._live-board-drawer', [
+            'items' => $items,
+            'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name', 'name_mr']),
+        ]);
+    }
+
+    /** Save live-board visibility for all active items in one go. */
+    public function liveBoardSync(Request $request): JsonResponse|RedirectResponse
+    {
+        $data = $request->validate([
+            'show_ids' => ['nullable', 'array'],
+            'show_ids.*' => ['integer', 'exists:products,id'],
+            'sync_all' => ['required', 'in:1'],
+        ]);
+
+        $showIds = array_values(array_unique(array_map('intval', $data['show_ids'] ?? [])));
+
+        DB::transaction(function () use ($showIds) {
+            // Only touch active items — inactive keep their flag for when reactivated.
+            Product::query()->where('is_active', true)->update(['show_on_live_stock' => false]);
+            if ($showIds !== []) {
+                Product::query()
+                    ->where('is_active', true)
+                    ->whereIn('id', $showIds)
+                    ->update(['show_on_live_stock' => true]);
+            }
+        });
+
+        $on = count($showIds);
+
+        return $this->savedResponse(
+            $request,
+            __('Live screen items saved. :n item(s) will show on the board.', ['n' => $on]),
+            'products.index'
+        );
+    }
+
     public function destroy(Request $request, Product $product): JsonResponse|RedirectResponse
     {
         try {

@@ -12,6 +12,12 @@
         <x-select-field name="status" :label="__('Status')" :value="request('status')" :placeholder="__('All')"
             :options="['active' => __('Active'), 'inactive' => __('Inactive')]" class="w-full sm:w-36" />
         <x-slot:actions>
+            @can('menu', ['products', 'edit'])
+                <button type="button" class="btn-secondary btn-sm"
+                        onclick="KrushiDrawer.open('{{ route('products.live-board') }}', '{{ __('Live screen items') }}', '40rem')">
+                    <x-icon name="stock" class="h-4 w-4" /> <span class="hidden sm:inline">{{ __('Live screen') }}</span>
+                </button>
+            @endcan
             @can('menu', ['products', 'add'])
                 <a href="{{ route('products.bulk') }}" class="btn-secondary btn-sm">
                     <x-icon name="list" class="h-4 w-4" /> <span class="hidden sm:inline">{{ __('Bulk / Excel') }}</span>

@@ -112,6 +112,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('menu:products')->group(function () {
         Route::get('products/bulk', [ProductController::class, 'bulkCreate'])->middleware('menu:products,add')->name('products.bulk');
         Route::post('products/bulk', [ProductController::class, 'bulkStore'])->middleware('menu:products,add')->name('products.bulk.store');
+        Route::get('products/live-board', [ProductController::class, 'liveBoardPicker'])->middleware('menu:products,edit')->name('products.live-board');
+        Route::post('products/live-board', [ProductController::class, 'liveBoardSync'])->middleware('menu:products,edit')->name('products.live-board.sync');
     });
     Route::resource('products', ProductController::class)->except('show')->middleware('menu:products');
 

@@ -115,12 +115,19 @@
                     :options="['day' => __('White board (professional)'), 'night' => __('Black board')]"
                     :hint="__('TV screen buttons can still switch Table/Cards and White/Black.')" />
                 <p class="text-xs text-ink-soft md:col-span-2">
-                    {{ __('Only items with “Show on live stock board” in Item Master appear. Qty refreshes automatically.') }}
+                    {{ __('Only checked items appear on the live board. Qty refreshes automatically.') }}
                 </p>
-                <p class="text-xs text-ink-soft md:col-span-2">
-                    {{ __('Open') }}: <a class="font-semibold text-leaf hover:underline" href="{{ url('/live-stock') }}" target="_blank" rel="noopener">{{ url('/live-stock') }}</a>
-                    · <a class="font-semibold text-leaf hover:underline" href="{{ route('stock.preview') }}">{{ __('Staff stock preview') }}</a>
-                </p>
+                <div class="flex flex-wrap items-center gap-2 md:col-span-2">
+                    @can('menu', ['products', 'edit'])
+                        <button type="button" class="btn-secondary btn-sm"
+                                onclick="event.preventDefault(); KrushiDrawer.open('{{ route('products.live-board') }}', '{{ __('Live screen items') }}', '40rem')">
+                            <x-icon name="list" class="h-4 w-4" /> {{ __('Choose items for live screen') }}
+                        </button>
+                    @endcan
+                    <a class="font-semibold text-leaf hover:underline text-sm" href="{{ url('/live-stock') }}" target="_blank" rel="noopener">{{ url('/live-stock') }}</a>
+                    <span class="text-ink-soft text-sm">·</span>
+                    <a class="font-semibold text-leaf hover:underline text-sm" href="{{ route('stock.preview') }}">{{ __('Staff stock preview') }}</a>
+                </div>
             </div>
         </section>
 
