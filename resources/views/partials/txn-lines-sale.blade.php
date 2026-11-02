@@ -31,15 +31,16 @@
 
                 <div class="txn-line__full">
                     <label class="txn-line__label label">{{ __('Product') }}</label>
-                    <select :name="`items[${i}][product_id]`" x-model="line.product_id" @change="pick(line)" class="input input-sm" required>
-                        <option value="">{{ __('Select product') }}</option>
-                        <template x-for="p in products" :key="p.id">
-                            <option :value="p.id" :selected="String(p.id) === String(line.product_id)" x-text="p.name + ' (' + p.stock + ' ' + (p.unit || '') + ')'"></option>
-                        </template>
+                    {{-- Select2: searchable product + current stock qty in label; native name keeps save working. --}}
+                    <select :name="`items[${i}][product_id]`"
+                            class="input input-sm js-sale-product"
+                            required
+                            x-init="$nextTick(() => mountProductSelect($el, line))">
                     </select>
                     <p class="txn-line__meta" x-show="product(line)">
                         HSN <span x-text="product(line)?.hsn || '-'"></span>
-                        <template x-if="available(line) !== null"><span> · {{ __('Here') }}: <span x-text="available(line)"></span></span></template>
+                        <template x-if="available(line) !== null"><span> · {{ __('Stock here') }}: <strong x-text="available(line)"></strong> <span x-text="product(line)?.unit || ''"></span></span></template>
+                        <template x-if="product(line)"><span> · {{ __('All places') }}: <strong x-text="product(line)?.stock ?? 0"></strong></span></template>
                         <template x-if="batch(line)?.rack"><span> · <span x-text="batch(line).rack"></span></span></template>
                         <template x-if="stockPlaces(line).length > 1"><span class="block text-leaf-dark">{{ __('By place') }}: <span x-text="stockPlacesLabel(line)"></span></span></template>
                         <template x-if="batch(line)?.mfg"><span class="lg:hidden"> · mfg <span x-text="batch(line).mfg"></span></span></template>

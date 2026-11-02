@@ -3,6 +3,7 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 import './components/form-busy';
 import './components/auto-filter';
+import './components/product-select2';
 import './components/invoice-form';
 import './components/voucher-number';
 import './components/bulk-settle';

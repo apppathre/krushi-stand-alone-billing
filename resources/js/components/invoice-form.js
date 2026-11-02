@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import { bindProductSelect2, productStockLabel, unbindProductSelect2 } from './product-select2';
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
@@ -216,6 +217,11 @@ Alpine.data('invoiceForm', (config) => ({
                 const first = this.batches(line)[0];
                 line.batch_id = first ? first.id : '';
             }
+            this.$nextTick(() => {
+                const idx = this.lines.indexOf(line);
+                const el = this.$root.querySelectorAll('[data-line]')[idx]?.querySelector('select.js-sale-product');
+                this.refreshProductSelect(el, line);
+            });
         }
     },
 
@@ -288,16 +294,59 @@ Alpine.data('invoiceForm', (config) => ({
         line.gst_overridden = false;
     },
 
+    /** Select2 product picker (sale): shows name + current stock; value still posts as product_id. */
+    productOptionLabel(product, line = null) {
+        return productStockLabel(product, line ? this.placeId(line) : null);
+    },
+
+    mountProductSelect(el, line) {
+        if (this.mode !== 'sale' || !el || !line) return;
+        bindProductSelect2(el, {
+            products: this.products,
+            value: line.product_id,
+            placeId: this.placeId(line),
+            placeholder: 'Select product',
+            onChange: (id) => {
+                if (String(line.product_id || '') === String(id || '')) return;
+                line.product_id = id || '';
+                if (line.product_id) {
+                    this.pick(line);
+                    // Defer remount so Select2 finishes its change cycle; refresh place stock in labels.
+                    this.$nextTick(() => setTimeout(() => this.refreshProductSelect(el, line), 0));
+                } else {
+                    line.batch_id = '';
+                    line.rate = 0;
+                    line.mrp = 0;
+                }
+            },
+        });
+    },
+
+    refreshProductSelect(el, line) {
+        if (this.mode !== 'sale' || !el || !line) return;
+        this.mountProductSelect(el, line);
+    },
+
+    destroyProductSelect(el) {
+        unbindProductSelect2(el);
+    },
+
     add() {
         this.lines.push(this.blank());
         this.$nextTick(() => {
             const rows = this.$root.querySelectorAll('[data-line]');
-            rows[rows.length - 1]?.querySelector('select')?.focus();
+            const last = rows[rows.length - 1];
+            const productSelect = last?.querySelector('select.js-sale-product');
+            (productSelect || last?.querySelector('select'))?.focus();
         });
     },
 
     remove(i) {
-        if (this.lines.length > 1) this.lines.splice(i, 1);
+        if (this.lines.length <= 1) return;
+        const rows = this.$root.querySelectorAll('[data-line]');
+        const el = rows[i]?.querySelector('select.js-sale-product');
+        this.destroyProductSelect(el);
+        this.lines.splice(i, 1);
     },
 
     get inter() {
