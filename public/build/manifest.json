@@ -1,16 +1,45 @@
 {
+  "_jquery-8_r4i6iI.js": {
+    "file": "assets/jquery-8_r4i6iI.js",
+    "name": "jquery",
+    "isDynamicEntry": true,
+    "imports": [
+      "_jquery-DkIBlopl.js"
+    ]
+  },
+  "_jquery-DkIBlopl.js": {
+    "file": "assets/jquery-DkIBlopl.js",
+    "name": "jquery"
+  },
+  "_select2-BzLlcL-l.js": {
+    "file": "assets/select2-BzLlcL-l.js",
+    "name": "select2",
+    "isDynamicEntry": true,
+    "imports": [
+      "_jquery-DkIBlopl.js"
+    ]
+  },
+  "node_modules/select2/dist/css/select2.min.css": {
+    "file": "assets/select2-Cw2tYcCP.css",
+    "src": "node_modules/select2/dist/css/select2.min.css"
+  },
   "resources/css/app.css": {
-    "file": "assets/app-Cbg8ebvb.css",
+    "file": "assets/app-Cl9pBApJ.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
+  "resources/css/select2-krushi.css": {
+    "file": "assets/select2-krushi-BJV1axMU.css",
+    "src": "resources/css/select2-krushi.css"
+  },
   "resources/js/app.js": {
-    "file": "assets/app-zhdSWEuJ.js",
+    "file": "assets/app-CApKISJ_.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
-    "css": [
-      "assets/app-Cw2tYcCP.css"
+    "dynamicImports": [
+      "_jquery-8_r4i6iI.js",
+      "_select2-BzLlcL-l.js"
     ]
   }
 }

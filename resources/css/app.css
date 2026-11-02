@@ -1755,64 +1755,9 @@
     .bill-summary__total { font-size: 1.35rem; }
 }
 
-/* Select2 searchable picks — body-attached dropdown, light lists, mobile-safe */
-.txn-line .select2-container,
-.js-searchable + .select2-container,
-.js-party-select + .select2-container,
-.select2-container { width: 100% !important; max-width: 100%; }
-.select2-container--default .select2-selection--single {
-    min-height: 2.5rem;
-    border: 1px solid var(--sage-dark);
-    border-radius: 0.5rem;
-    background: #fff;
-    padding: 0.25rem 0.45rem;
-}
-.txn-line .select2-container--default .select2-selection--single {
-    min-height: 2.25rem;
-    padding: 0.2rem 0.4rem;
-}
-.select2-container--default .select2-selection--single .select2-selection__rendered {
-    color: var(--ink);
-    line-height: 1.95rem;
-    padding-left: 0.35rem;
-    font-size: 0.875rem;
-}
-.select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 2.35rem;
-}
-.txn-line .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 2.1rem;
-}
-.select2-container--default.select2-container--focus .select2-selection--single,
-.select2-container--default.select2-container--open .select2-selection--single {
-    border-color: var(--leaf);
-    box-shadow: 0 0 0 2px rgb(var(--leaf-rgb) / 0.2);
-}
-/* Dropdown is on <body> — keep it above sticky payment bars / cards */
-.select2-container--open { z-index: 10050 !important; }
-.select2-dropdown,
-.select2-dropdown.krushi-select2-drop {
-    border-color: var(--sage-dark);
-    border-radius: 0.5rem;
-    z-index: 10060 !important;
-    max-width: min(100vw - 1rem, 36rem);
-}
-.select2-results__options {
-    max-height: 16rem !important; /* ~8 rows — less paint / memory on phone */
-}
-.select2-search--dropdown .select2-search__field {
-    border: 1px solid var(--sage-dark) !important;
-    border-radius: 0.4rem;
-    padding: 0.55rem 0.65rem !important;
-    font-size: 1rem; /* iOS: avoid zoom */
-}
-.select2-results__option {
-    font-size: 0.9rem;
-    padding: 0.55rem 0.7rem;
-}
-.select2-container--default .select2-results__option--highlighted[aria-selected] {
-    background: var(--leaf);
-}
+/* Select2 theme overrides live in resources/css/select2-krushi.css and load
+   only with Select2 (lazy). Do not put Select2 rules in the global app bundle —
+   that distorted Dashboard and other screens. */
 
 @media print {
     .app-sidebar, .page-topbar, .shell-nav-backdrop, .no-print, form[data-filter], .ui-drawer-backdrop, .ui-drawer, #ui-toasts {

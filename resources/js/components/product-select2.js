@@ -1,36 +1,62 @@
-import $ from 'jquery';
-import select2Factory from 'select2';
-import 'select2/dist/css/select2.min.css';
-
-// Vite/ESM: select2 exports a factory — must bind it to this jQuery instance.
-window.$ = window.jQuery = $;
-if (typeof select2Factory === 'function' && (!$.fn || !$.fn.select2)) {
-    select2Factory(window, $);
-}
-if (!$.fn?.select2) {
-    console.error('Select2 failed to load on jQuery — searchable selects will fall back to native.');
-}
+/**
+ * Searchable selects (Select2) — loaded only when a page actually needs them.
+ * Do NOT statically import jquery/select2/css here: that pulled Select2 CSS into
+ * every screen (dashboard included) and distorted layout.
+ */
 
 const NS = '.krushiSearchable';
 const RESULT_LIMIT = 40;
 
-/**
- * Always attach dropdown to <body> so it is not clipped / offset by overflow parents
- * (.card, .txn-line, sticky footers, etc.).
- */
+let select2Ready = null;
+
+/** Lazy-load jQuery + Select2 + CSS once per session. */
+export function ensureSelect2() {
+    if (select2Ready) {
+        return select2Ready;
+    }
+
+    select2Ready = Promise.all([
+        import('jquery'),
+        import('select2'),
+        import('select2/dist/css/select2.min.css'),
+        import('../../css/select2-krushi.css'),
+    ]).then(([jqMod, s2Mod]) => {
+        const $ = jqMod.default;
+        window.$ = window.jQuery = $;
+
+        const factory = s2Mod.default;
+        if (typeof factory === 'function' && (!$.fn || !$.fn.select2)) {
+            factory(window, $);
+        }
+        if (!$.fn?.select2) {
+            console.error('Select2 failed to load on jQuery.');
+        }
+
+        document.body?.classList.add('has-select2');
+
+        return $;
+    }).catch((err) => {
+        select2Ready = null;
+        console.error('Select2 load failed', err);
+        throw err;
+    });
+
+    return select2Ready;
+}
+
 function select2Base(placeholder, allowClear) {
     return {
         width: '100%',
         placeholder: placeholder || 'Select',
         allowClear: !!allowClear,
         minimumResultsForSearch: 0,
-        dropdownParent: $(document.body),
-        dropdownCssClass: 'krushi-select2-drop',
-        selectionCssClass: 'krushi-select2-sel',
+        dropdownParent: window.jQuery(document.body),
     };
 }
 
 function destroySelect2(el) {
+    const $ = window.jQuery;
+    if (!$ || !el) return;
     const $el = $(el);
     $el.off(NS);
     if ($.fn?.select2 && $el.hasClass('select2-hidden-accessible')) {
@@ -42,9 +68,6 @@ function destroySelect2(el) {
     }
 }
 
-/**
- * Format product option text. Sale lines can include place stock.
- */
 export function productStockLabel(product, placeId = null, { showStock = true } = {}) {
     if (!product) return '';
     const code = product.code ? ` [${product.code}]` : '';
@@ -74,61 +97,71 @@ function filterProducts(products, term, showStock) {
             || String(p.hsn || '').toLowerCase().includes(q)
         ));
     } else if (showStock) {
-        // Prefer in-stock items at the top when browsing without a query.
         list = list.slice().sort((a, b) => Number(b.stock || 0) - Number(a.stock || 0));
     }
     return list;
 }
 
+function setSelectedProductOption(el, products, value, placeId, placeholder, showStock) {
+    const current = value ? String(value) : '';
+    el.innerHTML = '';
+    el.appendChild(new Option(placeholder, '', !current, !current));
+    if (!current) return;
+    const p = (products || []).find((row) => String(row.id) === current);
+    const label = p
+        ? productStockLabel(p, placeId, { showStock })
+        : current;
+    el.appendChild(new Option(label, current, true, true));
+}
+
 /**
- * Product Select2: does NOT clone the full catalog into every line (memory-safe).
- * Search filters a shared array and returns at most RESULT_LIMIT rows.
+ * Product Select2 — shared catalog in memory, max RESULT_LIMIT rows in the menu.
  */
-export function bindProductSelect2(el, {
-    products = [],
-    value = '',
-    placeId = null,
-    placeholder = 'Select product',
-    showStock = true,
-    allowClear = true,
-    onChange = null,
-} = {}) {
-    if (!el) return;
+export function bindProductSelect2(el, opts = {}) {
+    if (!el) return Promise.resolve();
 
-    // Avoid full remount if already bound to the same catalog reference + place.
-    const sig = `${showStock ? 1 : 0}|${placeId || ''}|${products.length}`;
-    const $el = $(el);
-    if (
-        $.fn?.select2
-        && $el.hasClass('select2-hidden-accessible')
-        && el.dataset.krushiProdSig === sig
-    ) {
-        // Only sync selected value / label.
-        setSelectedProductOption(el, products, value, placeId, placeholder, showStock);
-        $el.off(NS);
-        $el.on(`change${NS}`, function () {
-            if (typeof onChange === 'function') onChange($(this).val() || '');
-        });
-        if (String($el.val() || '') !== String(value || '')) {
-            $el.val(value ? String(value) : null).trigger('change.select2');
+    return ensureSelect2().then(($) => {
+        const {
+            products = [],
+            value = '',
+            placeId = null,
+            placeholder = 'Select product',
+            showStock = true,
+            allowClear = true,
+            onChange = null,
+        } = opts;
+
+        const sig = `${showStock ? 1 : 0}|${placeId || ''}|${products.length}`;
+        const $el = $(el);
+
+        if (
+            $.fn?.select2
+            && $el.hasClass('select2-hidden-accessible')
+            && el.dataset.krushiProdSig === sig
+        ) {
+            setSelectedProductOption(el, products, value, placeId, placeholder, showStock);
+            $el.off(NS);
+            $el.on(`change${NS}`, function () {
+                if (typeof onChange === 'function') onChange($(this).val() || '');
+            });
+            if (String($el.val() || '') !== String(value || '')) {
+                $el.val(value ? String(value) : null).trigger('change.select2');
+            }
+            return;
         }
-        return;
-    }
 
-    destroySelect2(el);
-    setSelectedProductOption(el, products, value, placeId, placeholder, showStock);
-    el.dataset.krushiProdSig = sig;
+        destroySelect2(el);
+        setSelectedProductOption(el, products, value, placeId, placeholder, showStock);
+        el.dataset.krushiProdSig = sig;
 
-    if (!$.fn?.select2) {
-        // Native fallback: still avoid dumping the whole catalog — keep selected only + note.
-        $el.off(NS);
-        $el.on(`change${NS}`, function () {
-            if (typeof onChange === 'function') onChange($(this).val() || '');
-        });
-        return;
-    }
+        if (!$.fn?.select2) {
+            $el.off(NS);
+            $el.on(`change${NS}`, function () {
+                if (typeof onChange === 'function') onChange($(this).val() || '');
+            });
+            return;
+        }
 
-    try {
         $el.select2({
             ...select2Base(placeholder, allowClear),
             ajax: {
@@ -147,32 +180,14 @@ export function bindProductSelect2(el, {
             },
         });
 
-        if (value) {
-            $el.val(String(value)).trigger('change.select2');
-        } else {
-            $el.val(null).trigger('change.select2');
-        }
-    } catch (e) {
-        console.error('Select2 product init failed', e);
-    }
-
-    $el.off(NS);
-    $el.on(`change${NS}`, function () {
-        if (typeof onChange === 'function') onChange($(this).val() || '');
+        $el.val(value ? String(value) : null).trigger('change.select2');
+        $el.off(NS);
+        $el.on(`change${NS}`, function () {
+            if (typeof onChange === 'function') onChange($(this).val() || '');
+        });
+    }).catch(() => {
+        // Fallback: keep native select usable if Select2 fails to load.
     });
-}
-
-/** Keep only placeholder + current selection in the <select> DOM (light). */
-function setSelectedProductOption(el, products, value, placeId, placeholder, showStock) {
-    const current = value ? String(value) : '';
-    el.innerHTML = '';
-    el.appendChild(new Option(placeholder, '', !current, !current));
-    if (!current) return;
-    const p = (products || []).find((row) => String(row.id) === current);
-    const label = p
-        ? productStockLabel(p, placeId, { showStock })
-        : current;
-    el.appendChild(new Option(label, current, true, true));
 }
 
 export function unbindProductSelect2(el) {
@@ -181,36 +196,34 @@ export function unbindProductSelect2(el) {
     destroySelect2(el);
 }
 
-/**
- * Enhance an existing <select> (customer / supplier / filters) with Select2 search.
- * Uses body dropdown parent so the menu lines up under the field.
- */
-export function enhanceSelect(el, {
-    placeholder = null,
-    allowClear = true,
-    onChange = null,
-} = {}) {
-    if (!el) return;
+/** Customer / supplier / ledger selects — keep native options; body-attached menu. */
+export function enhanceSelect(el, opts = {}) {
+    if (!el) return Promise.resolve();
 
-    const ph = placeholder
-        || el.getAttribute('data-placeholder')
-        || el.querySelector('option[value=""]')?.textContent
-        || 'Select';
+    return ensureSelect2().then(($) => {
+        const {
+            placeholder = null,
+            allowClear = true,
+            onChange = null,
+        } = opts;
 
-    const current = el.value;
-    destroySelect2(el);
+        const ph = placeholder
+            || el.getAttribute('data-placeholder')
+            || el.querySelector('option[value=""]')?.textContent
+            || 'Select';
 
-    const $el = $(el);
-    if (!$.fn?.select2) {
-        $el.on(`change${NS}`, function () {
-            if (typeof onChange === 'function') onChange($(this).val() || '');
-        });
-        return;
-    }
+        const current = el.value;
+        destroySelect2(el);
+        const $el = $(el);
 
-    try {
-        // Keep native <option>s (one party/ledger list per page is fine).
-        // Product lines use bindProductSelect2 AJAX path for memory.
+        if (!$.fn?.select2) {
+            $el.off(NS);
+            $el.on(`change${NS}`, function () {
+                if (typeof onChange === 'function') onChange($(this).val() || '');
+            });
+            return;
+        }
+
         $el.select2({
             ...select2Base(ph, allowClear),
             matcher(params, data) {
@@ -222,64 +235,65 @@ export function enhanceSelect(el, {
             },
         });
 
-        if (current) {
-            $el.val(String(current)).trigger('change.select2');
-        } else {
-            $el.val(null).trigger('change.select2');
-        }
-    } catch (e) {
-        console.error('Select2 enhance failed', e);
-    }
-
-    $el.off(NS);
-    $el.on(`change${NS}`, function () {
-        if (typeof onChange === 'function') onChange($(this).val() || '');
-    });
+        $el.val(current ? String(current) : null).trigger('change.select2');
+        $el.off(NS);
+        $el.on(`change${NS}`, function () {
+            if (typeof onChange === 'function') onChange($(this).val() || '');
+        });
+    }).catch(() => {});
 }
 
-/** After manually adding/updating an <option>, refresh Select2 display. */
 export function refreshEnhancedSelect(el, value = null) {
-    if (!el) return;
-    const $el = $(el);
-    if ($.fn?.select2 && $el.hasClass('select2-hidden-accessible')) {
-        if (value !== null && value !== undefined && value !== '') {
-            $el.val(String(value)).trigger('change');
-        } else {
-            $el.trigger('change.select2');
-        }
-        return;
-    }
-    enhanceSelect(el, {
-        onChange: null,
-        allowClear: !el.required,
-    });
-    if (value !== null && value !== undefined && value !== '') {
-        $el.val(String(value)).trigger('change');
-    }
-}
-
-/**
- * Auto-enhance marks: class "js-searchable" (and optional data-placeholder).
- * Skips product line selects (those use bindProductSelect2 via Alpine).
- */
-export function autoEnhanceSearchable(root = document) {
-    root.querySelectorAll('select.js-searchable').forEach((el) => {
-        if (el.classList.contains('js-party-select')
-            || el.classList.contains('js-sale-product')
-            || el.classList.contains('js-txn-product')) {
+    if (!el) return Promise.resolve();
+    return ensureSelect2().then(($) => {
+        const $el = $(el);
+        if ($.fn?.select2 && $el.hasClass('select2-hidden-accessible')) {
+            if (value !== null && value !== undefined && value !== '') {
+                $el.val(String(value)).trigger('change');
+            } else {
+                $el.trigger('change.select2');
+            }
             return;
         }
-        if (el.dataset.searchableReady === '1' && $(el).hasClass('select2-hidden-accessible')) return;
-        enhanceSelect(el, {
-            allowClear: !el.required,
-            onChange: null,
+        return enhanceSelect(el, { allowClear: !el.required, onChange: null }).then(() => {
+            if (value !== null && value !== undefined && value !== '') {
+                $(el).val(String(value)).trigger('change');
+            }
         });
-        el.dataset.searchableReady = '1';
-    });
+    }).catch(() => {});
 }
 
-document.addEventListener('DOMContentLoaded', () => autoEnhanceSearchable(document));
+export function autoEnhanceSearchable(root = document) {
+    const nodes = root.querySelectorAll('select.js-searchable');
+    if (!nodes.length) return;
+
+    const needed = [...nodes].filter((el) => !(
+        el.classList.contains('js-party-select')
+        || el.classList.contains('js-sale-product')
+        || el.classList.contains('js-txn-product')
+    ));
+    if (!needed.length) return;
+
+    ensureSelect2().then(() => {
+        needed.forEach((el) => {
+            if (el.dataset.searchableReady === '1' && window.jQuery?.(el).hasClass('select2-hidden-accessible')) {
+                return;
+            }
+            enhanceSelect(el, { allowClear: !el.required, onChange: null });
+            el.dataset.searchableReady = '1';
+        });
+    }).catch(() => {});
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Only touch the network/CSS when this page actually has a searchable select.
+    if (document.querySelector('select.js-searchable, select.js-party-select, select.js-txn-product, select.js-sale-product')) {
+        autoEnhanceSearchable(document);
+    }
+});
 document.addEventListener('krushi:drawer-loaded', (e) => {
     const root = e.detail?.root || document.getElementById('ui-drawer-body') || document;
-    autoEnhanceSearchable(root);
+    if (root.querySelector?.('select.js-searchable, select.js-txn-product')) {
+        autoEnhanceSearchable(root);
+    }
 });
