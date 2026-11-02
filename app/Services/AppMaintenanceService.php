@@ -177,6 +177,7 @@ class AppMaintenanceService
                 ['TaxCatalogSeeder', __('GST slabs & HSN catalog upserted.')],
                 ['AreaSeeder', __('Areas upserted.')],
                 ['CatalogSeeder', __('Manufacturers, packings & catalog items upserted.')],
+                ['UserSeeder', __('Default owner login upserted.')],
             ] as [$class, $okMsg]) {
                 try {
                     Artisan::call('db:seed', [
