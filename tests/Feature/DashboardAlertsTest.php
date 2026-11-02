@@ -43,9 +43,19 @@ class DashboardAlertsTest extends TestCase
         $this->assertStringContainsString(__('Shop pulse'), $html);
         $this->assertStringContainsString(__('Low stock'), $html);
         $this->assertStringContainsString(__('Expiry alerts'), $html);
-        $this->assertStringContainsString('dashboard/pulse', $html);
-        $this->assertStringContainsString('dashboard/figures', $html);
-        $this->assertStringContainsString('dashboard/recent', $html);
+        // @js() JSON-escapes slashes (dashboard\/pulse); drawer onclick keeps plain paths.
+        $this->assertTrue(
+            str_contains($html, 'dashboard/pulse') || str_contains($html, 'dashboard\/pulse'),
+            'Dashboard shell must wire pulse URL'
+        );
+        $this->assertTrue(
+            str_contains($html, 'dashboard/figures') || str_contains($html, 'dashboard\/figures'),
+            'Dashboard shell must wire figures URL'
+        );
+        $this->assertTrue(
+            str_contains($html, 'dashboard/recent') || str_contains($html, 'dashboard\/recent'),
+            'Dashboard shell must wire recent URL'
+        );
         $this->assertStringContainsString('dashboard/alerts/low-stock', $html);
         $this->assertStringContainsString('dashboardBoard', $html);
         $this->assertStringContainsString('dash-skel', $html);

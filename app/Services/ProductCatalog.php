@@ -124,7 +124,8 @@ class ProductCatalog
     }
 
     /**
-     * Default rack id per place (godown default_rack_id, else rack.is_default, else first).
+     * Default rack id per place — only an explicit default (godown.default_rack_id or rack.is_default).
+     * Do not fall back to "first rack": purchase receive must stay unplaced so put-away can assign.
      *
      * @param  array<int, int>  $godownIds
      * @return array<int, int|null>
@@ -134,7 +135,7 @@ class ProductCatalog
         $grouped = $this->racksByPlace($godownIds);
         $out = [];
         foreach ($grouped as $gid => $racks) {
-            $pick = collect($racks)->firstWhere('is_default', true) ?? ($racks[0] ?? null);
+            $pick = collect($racks)->firstWhere('is_default', true);
             $out[(int) $gid] = $pick['id'] ?? null;
         }
 

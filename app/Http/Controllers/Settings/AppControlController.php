@@ -64,7 +64,7 @@ class AppControlController extends Controller
         $data['default_credit_limit'] = (float) $data['default_credit_limit'];
         $data['overdue_interest_pct'] = (float) ($data['overdue_interest_pct'] ?? 0);
         $data['live_stock_refresh_sec'] = (int) ($data['live_stock_refresh_sec'] ?? 30);
-        $data['live_stock_godown_id'] = $data['live_stock_godown_id'] ?: null;
+        $data['live_stock_godown_id'] = ($data['live_stock_godown_id'] ?? null) ?: null;
 
         $company = CompanyProfile::current();
         $update = collect($data)->only([

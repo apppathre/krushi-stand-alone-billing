@@ -38,6 +38,8 @@ class AppControlAndGstTest extends TestCase
             'default_invoice_print_format' => 'standard',
             'invoice_print_lang' => 'en',
             'default_print_size' => 'a4',
+            'live_stock_default_view' => 'table',
+            'live_stock_theme' => 'day',
             'commission_expense_ledger_id' => CompanyProfile::current()->id ? \App\Models\AccountMap::current()->commission_expense_ledger_id : null,
             'commission_payable_ledger_id' => \App\Models\AccountMap::current()->commission_payable_ledger_id,
         ])->assertSessionHasNoErrors()->assertRedirect();

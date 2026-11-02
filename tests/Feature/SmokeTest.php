@@ -77,10 +77,14 @@ class SmokeTest extends TestCase
         $client = Ledger::where('type', 'client')->when($walkInId, fn ($q) => $q->where('id', '!=', $walkInId))->first();
         $product = Product::where('batch_required', true)->first();
 
+        $cashId = Ledger::query()->paymentInstruments()->where('type', 'cash')->value('id');
+
         $this->post(route('purchases.store'), [
             'godown_id' => $godown->id,
             'supplier_ledger_id' => $supplier->id, 'purchase_date' => now()->toDateString(),
-            'supplier_invoice_no' => 'S-1', 'paid_amount' => 100, 'payment_mode' => 'cash',
+            'supplier_invoice_no' => 'S-1',
+            'settlement_type' => 'cash',
+            'paid_amount' => 100, 'payment_mode' => 'cash', 'payment_ledger_id' => $cashId,
             'items' => [[
                 'product_id' => $product->id, 'batch_no' => 'B1', 'expiry_date' => now()->addYear()->toDateString(),
                 'qty' => 10, 'rate' => 100, 'discount_pct' => 0,
@@ -90,7 +94,8 @@ class SmokeTest extends TestCase
         $this->post(route('sales.store'), [
             'godown_id' => $godown->id,
             'client_ledger_id' => $client->id, 'invoice_date' => now()->toDateString(),
-            'paid_amount' => 50, 'payment_mode' => 'cash',
+            'settlement_type' => 'cash',
+            'paid_amount' => 50, 'payment_mode' => 'cash', 'payment_ledger_id' => $cashId,
             'items' => [['product_id' => $product->id, 'batch_id' => \App\Models\ProductBatch::where('batch_no', 'B1')->value('id'), 'qty' => 2, 'rate' => 150, 'discount_pct' => 0]],
         ])->assertSessionHasNoErrors()->assertRedirect();
 
