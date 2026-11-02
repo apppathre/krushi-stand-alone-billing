@@ -14,7 +14,7 @@
         <x-slot:actions>
             @can('menu', ['products', 'edit'])
                 <button type="button" class="btn-secondary btn-sm"
-                        onclick="KrushiDrawer.open('{{ route('products.live-board') }}', '{{ __('Live screen items') }}', '40rem')">
+                        onclick="KrushiDrawer.open('{{ route('products.live-board') }}', '{{ __('Live screen items') }}', '52rem')">
                     <x-icon name="stock" class="h-4 w-4" /> <span class="hidden sm:inline">{{ __('Live screen') }}</span>
                 </button>
             @endcan

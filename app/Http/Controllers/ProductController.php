@@ -198,11 +198,12 @@ class ProductController extends Controller
             ->with('category:id,name,name_mr')
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'code', 'name', 'name_mr', 'category_id', 'show_on_live_stock'])
+            ->get(['id', 'code', 'name', 'name_mr', 'packing', 'category_id', 'show_on_live_stock'])
             ->map(fn (Product $p) => [
                 'id' => $p->id,
                 'code' => $p->code,
                 'name' => $p->display_name,
+                'packing' => $p->packing,
                 'category_id' => $p->category_id,
                 'category' => $p->category?->display_name,
                 'show' => (bool) $p->show_on_live_stock,

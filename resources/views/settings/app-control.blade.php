@@ -129,7 +129,7 @@
                 <div class="flex flex-wrap items-center gap-2 md:col-span-2">
                     @can('menu', ['products', 'edit'])
                         <button type="button" class="btn-secondary btn-sm"
-                                onclick="event.preventDefault(); KrushiDrawer.open('{{ route('products.live-board') }}', '{{ __('Live screen items') }}', '40rem')">
+                                onclick="event.preventDefault(); KrushiDrawer.open('{{ route('products.live-board') }}', '{{ __('Live screen items') }}', '52rem')">
                             <x-icon name="list" class="h-4 w-4" /> {{ __('Choose items for live screen') }}
                         </button>
                     @endcan

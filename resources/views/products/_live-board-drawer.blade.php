@@ -1,4 +1,4 @@
-{{-- Bulk toggle: which active items appear on the live stock TV board --}}
+{{-- Bulk pick: which active items appear on the live stock TV board --}}
 <form method="POST"
       action="{{ route('products.live-board.sync') }}"
       data-ajax-form
@@ -11,13 +11,13 @@
     <div data-form-errors class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" hidden></div>
 
     <p class="text-sm text-ink-soft">
-        {{ __('Tick items to show on the live stock screen. Untick to hide. Save once — no need to open each product.') }}
+        {{ __('Search the list on the left and add items to the live screen on the right. Save once — no need to open each product.') }}
     </p>
 
     <div class="grid gap-2 sm:grid-cols-2">
         <div>
             <label class="label" for="lb-q">{{ __('Search') }}</label>
-            <input id="lb-q" type="search" class="input input-sm" x-model.debounce.200ms="q" placeholder="{{ __('Name or code…') }}">
+            <input id="lb-q" type="search" class="input input-sm" x-model.debounce.200ms="q" placeholder="{{ __('Name, code or packing…') }}">
         </div>
         <div>
             <label class="label" for="lb-cat">{{ __('Category') }}</label>
@@ -31,45 +31,96 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2 text-xs">
-        <button type="button" class="btn-secondary btn-sm" @click="setFiltered(true)">{{ __('Show filtered') }}</button>
-        <button type="button" class="btn-secondary btn-sm" @click="setFiltered(false)">{{ __('Hide filtered') }}</button>
-        <button type="button" class="btn-secondary btn-sm" @click="setAll(true)">{{ __('Show all') }}</button>
-        <button type="button" class="btn-secondary btn-sm" @click="setAll(false)">{{ __('Hide all') }}</button>
+        <button type="button" class="btn-secondary btn-sm" @click="addFiltered()">{{ __('Add filtered') }}</button>
+        <button type="button" class="btn-secondary btn-sm" @click="removeFiltered()">{{ __('Remove filtered') }}</button>
+        <button type="button" class="btn-secondary btn-sm" @click="addAll()">{{ __('Add all') }}</button>
+        <button type="button" class="btn-secondary btn-sm" @click="clearAll()">{{ __('Clear screen') }}</button>
         <span class="ml-auto font-semibold text-ink-soft">
             <span x-text="onCount"></span> / <span x-text="items.length"></span> {{ __('on screen') }}
         </span>
     </div>
 
-    <div class="min-h-0 flex-1 overflow-auto rounded-lg border border-sage">
-        <table class="w-full text-sm">
-            <thead class="sticky top-0 bg-cream text-left text-xs uppercase tracking-wide text-ink-soft">
-                <tr>
-                    <th class="w-12 px-3 py-2">{{ __('Show') }}</th>
-                    <th class="px-3 py-2">{{ __('Item') }}</th>
-                    <th class="px-3 py-2">{{ __('Category') }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template x-for="it in filtered" :key="it.id">
-                    <tr class="border-t border-sage" :class="{ 'bg-sage/40': it.show }">
-                        <td class="px-3 py-2 text-center">
-                            <input type="checkbox" class="checkbox" :checked="it.show" @change="it.show = $event.target.checked">
-                        </td>
-                        <td class="px-3 py-2">
-                            <span class="font-semibold" x-text="it.name"></span>
-                            <span class="block text-xs text-ink-soft" x-text="it.code || '—'"></span>
-                        </td>
-                        <td class="px-3 py-2 text-ink-soft" x-text="it.category || '—'"></td>
-                    </tr>
-                </template>
-                <tr x-show="filtered.length === 0">
-                    <td colspan="3" class="px-3 py-6 text-center text-ink-soft">{{ __('No items match.') }}</td>
-                </tr>
-            </tbody>
-        </table>
+    <div class="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
+        {{-- Available catalog --}}
+        <div class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-sage">
+            <div class="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-sage bg-cream px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                <span>{{ __('Available') }}</span>
+                <span x-text="available.length"></span>
+            </div>
+            <div class="min-h-0 flex-1 overflow-auto">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-cream/95 text-left text-[11px] uppercase tracking-wide text-ink-soft">
+                        <tr>
+                            <th class="px-3 py-2">{{ __('Item') }}</th>
+                            <th class="px-3 py-2">{{ __('Packing') }}</th>
+                            <th class="w-16 px-2 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="it in available" :key="'a'+it.id">
+                            <tr class="border-t border-sage hover:bg-sage/30">
+                                <td class="px-3 py-2">
+                                    <span class="font-semibold" x-text="it.name"></span>
+                                    <span class="block text-xs text-ink-soft">
+                                        <span x-text="it.code || '—'"></span>
+                                        <span x-show="it.category" x-text="' · ' + it.category"></span>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-ink-soft" x-text="it.packing || '—'"></td>
+                                <td class="px-2 py-2 text-right">
+                                    <button type="button" class="btn-primary btn-sm" @click="addOne(it.id)">{{ __('Add') }}</button>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="available.length === 0">
+                            <td colspan="3" class="px-3 py-6 text-center text-ink-soft" x-text="items.length === 0 ? @js(__('No active products.')) : @js(__('No items left to add (or none match search).'))"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- On live screen --}}
+        <div class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-leaf/40 bg-leaf/5">
+            <div class="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-leaf/30 bg-cream px-3 py-2 text-xs font-semibold uppercase tracking-wide text-leaf-dark">
+                <span>{{ __('On live screen') }}</span>
+                <span x-text="selected.length + (q || categoryId ? (' / ' + onCount) : '')"></span>
+            </div>
+            <div class="min-h-0 flex-1 overflow-auto">
+                <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-cream/95 text-left text-[11px] uppercase tracking-wide text-ink-soft">
+                        <tr>
+                            <th class="px-3 py-2">{{ __('Item') }}</th>
+                            <th class="px-3 py-2">{{ __('Packing') }}</th>
+                            <th class="w-16 px-2 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="it in selected" :key="'s'+it.id">
+                            <tr class="border-t border-sage hover:bg-white/60">
+                                <td class="px-3 py-2">
+                                    <span class="font-semibold" x-text="it.name"></span>
+                                    <span class="block text-xs text-ink-soft">
+                                        <span x-text="it.code || '—'"></span>
+                                        <span x-show="it.category" x-text="' · ' + it.category"></span>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-ink-soft" x-text="it.packing || '—'"></td>
+                                <td class="px-2 py-2 text-right">
+                                    <button type="button" class="btn-secondary btn-sm" @click="removeOne(it.id)">{{ __('Remove') }}</button>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="selected.length === 0">
+                            <td colspan="3" class="px-3 py-6 text-center text-ink-soft" x-text="onCount === 0 ? @js(__('Nothing on the live screen yet — add from the left.')) : @js(__('No on-screen items match search.'))"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    {{-- Post only checked IDs; server turns others off among active items. --}}
+    {{-- Post only selected IDs; server turns others off among active items. --}}
     <template x-for="id in selectedIds" :key="'h'+id">
         <input type="hidden" name="show_ids[]" :value="id">
     </template>
@@ -80,36 +131,3 @@
         <button type="button" class="btn-secondary" onclick="window.Alpine && Alpine.store('ui').closeDrawer()">{{ __('Cancel') }}</button>
     </div>
 </form>
-
-<script>
-    function liveBoardPicker(cfg) {
-        return {
-            items: (cfg.items || []).map((it) => ({ ...it, show: !!it.show })),
-            categories: cfg.categories || [],
-            q: '',
-            categoryId: '',
-            get filtered() {
-                const q = this.q.trim().toLowerCase();
-                return this.items.filter((it) => {
-                    if (this.categoryId && String(it.category_id) !== String(this.categoryId)) return false;
-                    if (!q) return true;
-                    return (it.name || '').toLowerCase().includes(q)
-                        || (it.code || '').toLowerCase().includes(q)
-                        || (it.category || '').toLowerCase().includes(q);
-                });
-            },
-            get selectedIds() {
-                return this.items.filter((it) => it.show).map((it) => it.id);
-            },
-            get onCount() {
-                return this.selectedIds.length;
-            },
-            setFiltered(on) {
-                this.filtered.forEach((it) => { it.show = !!on; });
-            },
-            setAll(on) {
-                this.items.forEach((it) => { it.show = !!on; });
-            },
-        };
-    }
-</script>

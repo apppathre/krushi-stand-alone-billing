@@ -36,7 +36,7 @@ class SmokeTest extends TestCase
             'areas.index', 'areas.create',
             'manufacturers.index', 'manufacturers.create', 'categories.index', 'units.index', 'godowns.index',
             'hsn-codes.index', 'gst-slabs.index',
-            'products.index', 'products.create', 'products.bulk', 'opening-stock.index', 'opening-stock.bulk',
+            'products.index', 'products.create', 'products.bulk', 'products.live-board', 'opening-stock.index', 'opening-stock.bulk',
             'put-away.index', 'racks.index',
             'stock-journals.transfer', 'stock-journals.journal', 'stock-journals.rejection', 'stock-journals.issue',
             'stock-journals.physical', 'stock-journals.return',

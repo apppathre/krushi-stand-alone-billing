@@ -7,7 +7,7 @@
         <a href="{{ route('stock.index', ['godown_id' => $gid]) }}" class="btn-secondary btn-sm">{{ __('Stock list') }}</a>
         @can('menu', ['products', 'edit'])
             <button type="button" class="btn-secondary btn-sm"
-                    onclick="KrushiDrawer.open('{{ route('products.live-board') }}', '{{ __('Live screen items') }}', '40rem')">
+                    onclick="KrushiDrawer.open('{{ route('products.live-board') }}', '{{ __('Live screen items') }}', '52rem')">
                 <x-icon name="stock" class="h-4 w-4" /> {{ __('Live screen items') }}
             </button>
         @endcan
