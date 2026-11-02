@@ -337,6 +337,7 @@ Route::middleware('auth')->group(function () {
         Route::post('clear-caches', [MaintenanceController::class, 'clearCaches'])->middleware('menu:maintenance,edit')->name('clear-caches');
         Route::post('indexes', [MaintenanceController::class, 'applyIndexes'])->middleware('menu:maintenance,edit')->name('indexes');
         Route::post('sync-masters', [MaintenanceController::class, 'syncMasters'])->middleware('menu:maintenance,edit')->name('sync-masters');
+        Route::post('pdf-fonts', [MaintenanceController::class, 'installPdfFonts'])->middleware('menu:maintenance,edit')->name('pdf-fonts');
     });
 });
 

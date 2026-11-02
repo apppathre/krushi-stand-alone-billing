@@ -27,7 +27,8 @@ class MaintenanceTest extends TestCase
         $this->get(route('maintenance.index'))
             ->assertOk()
             ->assertSee('Server maintenance', false)
-            ->assertSee('Table indexes', false);
+            ->assertSee('Table indexes', false)
+            ->assertSee('Install / repair PDF fonts', false);
 
         $before = app(TableIndexService::class)->status();
         $this->post(route('maintenance.indexes'))
@@ -37,6 +38,13 @@ class MaintenanceTest extends TestCase
         $after = app(TableIndexService::class)->status();
         $this->assertSame(count($before), count($after));
         $this->assertTrue(collect($after)->where('skipped', false)->every(fn ($r) => $r['present']));
+
+        $this->post(route('maintenance.pdf-fonts'), ['force' => 1])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect()
+            ->assertSessionHas('status');
+        $this->assertTrue(\App\Support\PrintFonts::marathiAvailable());
+        $this->artisan('krushi:pdf-fonts', ['--force' => true])->assertSuccessful();
     }
 
     public function test_install_page_redirects_when_already_installed(): void

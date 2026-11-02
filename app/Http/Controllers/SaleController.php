@@ -16,8 +16,8 @@ use App\Support\LedgerBalance;
 use App\Support\PrintFormats;
 use App\Support\TermsHtml;
 use App\Support\WorkContext;
+use App\Support\PdfMaker;
 use App\Support\PrintFonts;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -227,7 +227,7 @@ class SaleController extends Controller
         $orientation = ($meta['orientation'] ?? 'portrait') === 'landscape' ? 'landscape' : 'portrait';
         $paper = match ($size) {
             'half' => ['paper' => 'a5', 'orientation' => 'portrait'],
-            'quarter' => ['paper' => [0, 0, 298, 420], 'orientation' => 'portrait'],
+            'quarter' => ['paper' => [105, 148], 'orientation' => 'portrait'], // A6 mm
             default => ['paper' => 'a4', 'orientation' => $orientation],
         };
 
@@ -240,7 +240,7 @@ class SaleController extends Controller
             $lang = 'en';
         }
 
-        $pdf = Pdf::loadView($meta['view'], [
+        $mpdf = PdfMaker::fromView($meta['view'], [
             'sale' => $sale,
             'company' => $company,
             'printSize' => $size,
@@ -248,17 +248,16 @@ class SaleController extends Controller
             'printLang' => $lang,
             'printFontFamily' => PrintFonts::cssFamily($lang),
             'partyBalance' => $partyBal,
-        ])->setPaper($paper['paper'], $paper['orientation']);
-        PrintFonts::applyToPdf($pdf);
+        ], $paper, $lang);
 
         $file = 'invoice-'.str_replace('/', '-', $sale->invoice_no).'-'.$format.'-'.$size.'.pdf';
 
-        return $request->boolean('download') ? $pdf->download($file) : $pdf->stream($file);
+        return PdfMaker::response($mpdf, $file, $request->boolean('download'));
     }
 
     /**
      * Browser print preview (HTML + web Devanagari fonts).
-     * Best option when DomPDF Marathi font is missing, or for staff who prefer Ctrl+P.
+     * Handy for Ctrl+P; mPDF is the default download/stream path.
      */
     public function printPreview(Request $request, Sale $sale)
     {
@@ -321,7 +320,7 @@ class SaleController extends Controller
 
         $paper = match ($size) {
             'half' => ['paper' => 'a5', 'orientation' => 'portrait'],
-            'quarter' => ['paper' => [0, 0, 298, 420], 'orientation' => 'portrait'],
+            'quarter' => ['paper' => [105, 148], 'orientation' => 'portrait'],
             default => ['paper' => 'a4', 'orientation' => 'portrait'],
         };
 
@@ -329,18 +328,17 @@ class SaleController extends Controller
             $lang = 'en';
         }
 
-        $pdf = Pdf::loadView('sales.pdf-dc', [
+        $mpdf = PdfMaker::fromView('sales.pdf-dc', [
             'sale' => $sale,
             'company' => $company,
             'printSize' => $size,
             'printLang' => $lang,
             'printFontFamily' => PrintFonts::cssFamily($lang),
-        ])->setPaper($paper['paper'], $paper['orientation']);
-        PrintFonts::applyToPdf($pdf);
+        ], $paper, $lang);
 
         $file = 'dc-'.str_replace('/', '-', $sale->invoice_no).'-'.$size.'.pdf';
 
-        return $request->boolean('download') ? $pdf->download($file) : $pdf->stream($file);
+        return PdfMaker::response($mpdf, $file, $request->boolean('download'));
     }
 
     public function payment(Request $request, Sale $sale): RedirectResponse

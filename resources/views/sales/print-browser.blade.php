@@ -92,7 +92,7 @@
 
 @if ($mr && ! $pdfOk)
     <div class="warn no-print">
-        {{ __('Marathi PDF needs the Noto Sans Devanagari font on the server. Browser print below is the recommended option for clear Marathi text.') }}
+        {{ __('Marathi PDF uses mPDF + Noto Sans Devanagari on the server. Browser print below is an alternate for Ctrl+P.') }}
     </div>
 @endif
 

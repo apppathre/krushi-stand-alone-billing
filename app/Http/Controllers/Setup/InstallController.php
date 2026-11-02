@@ -37,6 +37,7 @@ class InstallController extends Controller
             'pending' => $pending,
             'needsOwner' => $needsOwner,
             'steps' => session('install_steps', []),
+            'pdfFonts' => \App\Support\PrintFonts::statusForUi(),
         ]);
     }
 

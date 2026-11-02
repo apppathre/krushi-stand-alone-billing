@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\PrintFonts;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -240,10 +241,24 @@ class AppMaintenanceService
             }
         }
 
+        // Marathi mPDF fonts — copy bundled TTFs into storage (safe to re-run).
+        $fonts = $this->installPdfFonts(force: false);
+        $steps[] = ['step' => 'pdf_fonts', 'ok' => $fonts['ok'], 'message' => $fonts['message']];
+
         return [
             'ok' => true,
             'message' => __('Install / deploy steps finished.'),
             'steps' => $steps,
         ];
+    }
+
+    /**
+     * Copy Noto Devanagari TTFs from resources/fonts into storage/fonts for mPDF.
+     *
+     * @return array{ok: bool, message: string, copied: list<string>, missing: list<string>}
+     */
+    public function installPdfFonts(bool $force = false): array
+    {
+        return PrintFonts::install($force);
     }
 }

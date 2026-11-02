@@ -31,6 +31,15 @@
                         <strong class="text-leaf">{{ __('Ready') }}</strong>
                     @endif
                 </li>
+                <li>{{ __('Marathi PDF fonts (mPDF)') }}:
+                    @if (($pdfFonts['available'] ?? false))
+                        <strong class="text-leaf">{{ __('Ready') }}</strong>
+                    @elseif (! ($pdfFonts['source_ok'] ?? false))
+                        <strong class="text-accent">{{ __('Missing in code — push resources/fonts/devanagari/*.ttf') }}</strong>
+                    @else
+                        <strong class="text-accent">{{ __('Will install on this run') }}</strong>
+                    @endif
+                </li>
             </ul>
 
             @if ($errors->any())

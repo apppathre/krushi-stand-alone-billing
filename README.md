@@ -81,7 +81,7 @@ Change these passwords (Profile) before using the system for real.
 - **Numbering** – `INV/2026-27/0001`, `PUR/…`, `CN/…`, per financial year (April–March), generated from `document_series`.
 - **Ledger posting** – each sale / purchase / payment / credit note posts a balanced voucher into `ledger_entries`; cancelling reverses stock and postings.
 - **Email** – *Settings → Mail (SMTP)*: enter host/port/credentials, enable, use *Send test*. Forgot-password mails use these DB settings.
-- **PDF** – invoices are rendered with DomPDF in English (Devanagari shaping is not supported by the bundled fonts).
+- **PDF** – invoices / DC use **mPDF** with bundled Noto Sans Devanagari (`resources/fonts/devanagari`) for Marathi Unicode; English uses DejaVu. Browser print remains available for Ctrl+P.
 - **Language** – EN / मराठी toggle in the header; UI strings live in `lang/mr.json` and masters carry a Marathi name column.
 
 ## Tests

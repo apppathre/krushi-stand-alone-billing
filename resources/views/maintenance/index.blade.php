@@ -63,7 +63,21 @@
                 @csrf
                 <button class="btn-secondary" data-busy-label="{{ __('Syncing…') }}">{{ __('Sync masters only') }}</button>
             </form>
+            <form method="POST" action="{{ route('maintenance.pdf-fonts') }}"
+                  onsubmit="return confirm(@js(__('Copy Marathi PDF fonts from resources into storage/fonts for mPDF?')))">
+                @csrf
+                <input type="hidden" name="force" value="1">
+                <button class="btn-secondary" data-busy-label="{{ __('Installing fonts…') }}">{{ __('Install / repair PDF fonts') }}</button>
+            </form>
         </div>
+        <p class="text-sm {{ ($pdfFonts['available'] ?? false) ? 'text-leaf' : 'text-accent' }}">
+            {{ __('Marathi PDF (mPDF)') }}:
+            <strong>{{ $pdfFonts['label'] ?? '' }}</strong>
+        </p>
+        <p class="text-xs text-ink-soft">
+            {{ __('Fonts ship with the project in resources/fonts/devanagari. Install copies them to storage/fonts. Safe to re-run anytime.') }}
+            · <code class="text-[10px]">php artisan krushi:pdf-fonts --force</code>
+        </p>
         <p class="text-xs text-ink-soft">{{ __('First-time empty server: open /install instead (full seed). This page is for owners after login.') }}</p>
     </div>
 

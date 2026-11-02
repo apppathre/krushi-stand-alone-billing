@@ -26,6 +26,7 @@ class MaintenanceController extends Controller
             'indexRows' => $indexRows,
             'indexesReady' => collect($indexRows)->where('present', true)->count(),
             'indexesMissing' => collect($indexRows)->where('present', false)->where('skipped', false)->count(),
+            'pdfFonts' => \App\Support\PrintFonts::statusForUi(),
         ]);
     }
 
@@ -72,5 +73,19 @@ class MaintenanceController extends Controller
         return back()
             ->with($result['ok'] ? 'status' : 'error', $result['message'])
             ->with('maintenance_steps', $result['steps']);
+    }
+
+    /** Re-copy bundled Noto Devanagari TTFs into storage/fonts for mPDF. */
+    public function installPdfFonts(Request $request): RedirectResponse
+    {
+        $result = $this->maintenance->installPdfFonts(force: $request->boolean('force', true));
+
+        return back()
+            ->with($result['ok'] ? 'status' : 'error', $result['message'])
+            ->with('maintenance_steps', [[
+                'step' => 'pdf_fonts',
+                'ok' => $result['ok'],
+                'message' => $result['message'],
+            ]]);
     }
 }
