@@ -40,6 +40,24 @@ class AppMaintenanceService
         }
     }
 
+    /** Schema exists but nobody can sign in (seed timed out / tables wiped). */
+    public function needsOwnerSeed(): bool
+    {
+        if (! $this->databaseConnected()) {
+            return false;
+        }
+
+        try {
+            if (! Schema::hasTable('users') || ! Schema::hasTable('roles')) {
+                return true;
+            }
+
+            return ! DB::table('users')->where('is_active', true)->exists();
+        } catch (\Throwable) {
+            return true;
+        }
+    }
+
     public function hasPendingMigrations(): bool
     {
         if (! $this->databaseConnected()) {
@@ -161,23 +179,25 @@ class AppMaintenanceService
         }
 
         if ($fullSeed) {
+            // Seed in order; owner is early in DatabaseSeeder. If a late seeder fails, still force owner.
             try {
                 Artisan::call('db:seed', ['--force' => true]);
                 $steps[] = ['step' => 'seed', 'ok' => true, 'message' => __('Full database seed completed.')];
             } catch (\Throwable $e) {
-                $msg = __('Seed failed: :err', ['err' => $e->getMessage()]);
-                $steps[] = ['step' => 'seed', 'ok' => false, 'message' => $msg];
-
-                return ['ok' => false, 'message' => $msg, 'steps' => $steps];
+                $steps[] = [
+                    'step' => 'seed',
+                    'ok' => false,
+                    'message' => __('Seed failed: :err — trying owner login next.', ['err' => $e->getMessage()]),
+                ];
             }
         } elseif ($seedMasters) {
             foreach ([
                 ['AccessSeeder', __('Menus & roles synced.')],
+                ['UserSeeder', __('Default owner login upserted.')],
                 ['LedgerSeeder', __('Default ledgers (rent, salary, interest) synced.')],
                 ['TaxCatalogSeeder', __('GST slabs & HSN catalog upserted.')],
                 ['AreaSeeder', __('Areas upserted.')],
                 ['CatalogSeeder', __('Manufacturers, packings & catalog items upserted.')],
-                ['UserSeeder', __('Default owner login upserted.')],
             ] as [$class, $okMsg]) {
                 try {
                     Artisan::call('db:seed', [
@@ -188,9 +208,35 @@ class AppMaintenanceService
                 } catch (\Throwable $e) {
                     $msg = __(':class failed: :err', ['class' => $class, 'err' => $e->getMessage()]);
                     $steps[] = ['step' => strtolower($class), 'ok' => false, 'message' => $msg];
-
-                    return ['ok' => false, 'message' => $msg, 'steps' => $steps];
+                    // Keep going for non-owner seeders; owner is required.
+                    if ($class === 'AccessSeeder' || $class === 'UserSeeder') {
+                        return ['ok' => false, 'message' => $msg, 'steps' => $steps];
+                    }
                 }
+            }
+        }
+
+        // Always guarantee an active owner after wipe / timeout / partial seed.
+        if ($this->needsOwnerSeed() || $fullSeed || $seedMasters) {
+            try {
+                Artisan::call('db:seed', [
+                    '--class' => 'Database\\Seeders\\AccessSeeder',
+                    '--force' => true,
+                ]);
+                Artisan::call('db:seed', [
+                    '--class' => 'Database\\Seeders\\UserSeeder',
+                    '--force' => true,
+                ]);
+                $steps[] = [
+                    'step' => 'owner',
+                    'ok' => true,
+                    'message' => __('Owner login ready: :email', ['email' => \Database\Seeders\UserSeeder::OWNER_EMAIL]),
+                ];
+            } catch (\Throwable $e) {
+                $msg = __('Owner seed failed: :err', ['err' => $e->getMessage()]);
+                $steps[] = ['step' => 'owner', 'ok' => false, 'message' => $msg];
+
+                return ['ok' => false, 'message' => $msg, 'steps' => $steps];
             }
         }
 

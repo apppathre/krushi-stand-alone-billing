@@ -24,6 +24,13 @@
                 </li>
                 <li>{{ __('Already installed') }}: <strong>{{ $installed ? __('Yes') : __('No') }}</strong></li>
                 <li>{{ __('Pending migrations') }}: <strong>{{ $pending ? __('Yes') : __('No') }}</strong></li>
+                <li>{{ __('Owner user') }}:
+                    @if ($needsOwner ?? true)
+                        <strong class="text-accent">{{ __('Missing — seed required') }}</strong>
+                    @else
+                        <strong class="text-leaf">{{ __('Ready') }}</strong>
+                    @endif
+                </li>
             </ul>
 
             @if ($errors->any())
@@ -42,7 +49,7 @@
 
             <form method="POST" action="{{ route('setup.install.run') }}" class="space-y-3" data-busy-label="{{ __('Installing…') }}">
                 @csrf
-                @unless ($installed)
+                @if (! $installed || ($needsOwner ?? false))
                     <label class="inline-flex items-center gap-2 text-sm font-semibold">
                         <input type="checkbox" name="full_seed" value="1" class="checkbox" checked>
                         {{ __('Full seed (company, menus, ledgers, sample catalog, owner user)') }}
@@ -50,10 +57,17 @@
                     <p class="text-xs text-ink-soft">
                         {{ __('Owner login after install') }}:
                         <span class="font-semibold text-ink">{{ \Database\Seeders\UserSeeder::OWNER_EMAIL }}</span>
+                        / <span class="font-semibold text-ink">{{ \Database\Seeders\UserSeeder::OWNER_PASSWORD }}</span>
                     </p>
-                @endunless
+                @endif
                 <button type="submit" class="btn-primary w-full" @disabled(! $connected)>
-                    {{ $installed ? __('Apply pending updates') : __('Install now') }}
+                    @if ($needsOwner ?? false)
+                        {{ __('Create owner & finish setup') }}
+                    @elseif ($installed)
+                        {{ __('Apply pending updates') }}
+                    @else
+                        {{ __('Install now') }}
+                    @endif
                 </button>
             </form>
 

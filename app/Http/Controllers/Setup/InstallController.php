@@ -21,8 +21,10 @@ class InstallController extends Controller
         $connected = $this->maintenance->databaseConnected();
         $installed = $this->maintenance->isInstalled();
         $pending = $this->maintenance->hasPendingMigrations();
+        $needsOwner = $this->maintenance->needsOwnerSeed();
 
-        if ($installed && ! $pending) {
+        // Empty users after wipe / failed seed — keep /install open so owner can be created.
+        if ($installed && ! $pending && ! $needsOwner) {
             return redirect()->route('login')->with(
                 'status',
                 __('Database is already installed. Sign in — use Administration → Server maintenance for updates.')
@@ -33,6 +35,7 @@ class InstallController extends Controller
             'connected' => $connected,
             'installed' => $installed,
             'pending' => $pending,
+            'needsOwner' => $needsOwner,
             'steps' => session('install_steps', []),
         ]);
     }
@@ -40,10 +43,12 @@ class InstallController extends Controller
     public function run(Request $request): RedirectResponse
     {
         $installed = $this->maintenance->isInstalled();
-        $fullSeed = ! $installed && $request->boolean('full_seed', true);
+        $needsOwner = $this->maintenance->needsOwnerSeed();
+        // Fresh DB, or schema with no login: always full-seed when asked (default on).
+        $fullSeed = (! $installed || $needsOwner) && $request->boolean('full_seed', true);
 
         $result = $this->maintenance->installOrDeploy(
-            seedMasters: $installed, // on update: refresh menus/tax/areas
+            seedMasters: $installed && ! $fullSeed, // updates only when not doing full seed
             fullSeed: $fullSeed,
         );
 
@@ -54,9 +59,10 @@ class InstallController extends Controller
         }
 
         $message = $this->maintenance->isInstalled()
-            ? ($fullSeed
-                ? __('Setup complete. Sign in as :email', ['email' => \Database\Seeders\UserSeeder::OWNER_EMAIL])
-                : __('Database updates applied. Sign in to continue.'))
+            ? __('Setup complete. Sign in as :email / password :password', [
+                'email' => \Database\Seeders\UserSeeder::OWNER_EMAIL,
+                'password' => \Database\Seeders\UserSeeder::OWNER_PASSWORD,
+            ])
             : __('Setup ran, but install check failed. Verify .env and try again.');
 
         return redirect()->route('login')->with('status', $message);
