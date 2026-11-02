@@ -54,6 +54,7 @@ class CompanyProfile extends Model
             'default_invoice_print_format' => 'standard',
             'invoice_print_lang' => 'auto',
             'default_print_size' => 'a4',
+            'invoice_print_action' => 'ask',
         ]);
     }
 

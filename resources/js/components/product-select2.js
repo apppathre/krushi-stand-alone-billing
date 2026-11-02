@@ -235,11 +235,23 @@ export function enhanceSelect(el, opts = {}) {
             },
         });
 
-        $el.val(current ? String(current) : null).trigger('change.select2');
+        // Do not .trigger('change') on init — HTML already has the selected option, and
+        // a change event re-submits filter forms (bulk receipt ?party_id= refresh loop).
+        if (current && String($el.val() || '') !== String(current)) {
+            $el.val(String(current));
+        }
         $el.off(NS);
         $el.on(`change${NS}`, function () {
             if (typeof onChange === 'function') onChange($(this).val() || '');
         });
+
+        // Filter GET forms: submit only on real user pick/clear, never on Select2 init.
+        if (el.dataset.filterSubmit === '1' && el.form) {
+            $el.off('select2:select.krushiFilter select2:clear.krushiFilter');
+            $el.on('select2:select.krushiFilter select2:clear.krushiFilter', () => {
+                el.form.submit();
+            });
+        }
     }).catch(() => {});
 }
 

@@ -26,6 +26,14 @@ class BulkPaymentController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'name_mr', 'phone']);
 
+        // Keep the selected supplier in the list after settle (no open dues left).
+        if ($partyId > 0 && ! $parties->contains(fn ($p) => (int) $p->id === $partyId)) {
+            $picked = Ledger::suppliers()->whereKey($partyId)->first(['id', 'name', 'name_mr', 'phone']);
+            if ($picked) {
+                $parties = $parties->prepend($picked)->values();
+            }
+        }
+
         $dues = collect();
         if ($partyId > 0) {
             $dues = Purchase::with('supplier')

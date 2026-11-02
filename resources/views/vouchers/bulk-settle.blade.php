@@ -20,8 +20,10 @@
     <form method="GET" action="{{ $filterRoute }}" class="card card-body mb-4 grid gap-3 sm:grid-cols-3">
         <div class="sm:col-span-2">
             <label class="label" for="f-party_id">{{ $partyLabel }} <span class="text-accent">*</span></label>
+            {{-- No inline onchange: Select2 init triggers change and would refresh-loop when party_id is set. --}}
             <select id="f-party_id" name="party_id" class="input js-searchable" required
-                    data-placeholder="{{ __('Select…') }}" onchange="this.form.submit()">
+                    data-placeholder="{{ __('Select…') }}"
+                    data-filter-submit="1">
                 <option value="">{{ __('Select…') }}</option>
                 @foreach ($parties as $p)
                     <option value="{{ $p->id }}" @selected((int) $partyId === (int) $p->id)>

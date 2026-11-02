@@ -36,6 +36,65 @@ class BulkSettleTest extends TestCase
         $this->get(route('bulk-payments.create'))->assertOk();
     }
 
+    public function test_bulk_receipt_with_party_id_stays_stable_and_shows_dues(): void
+    {
+        $this->actingAs($this->owner());
+        $godown = Godown::first();
+        $supplier = Ledger::where('type', 'supplier')->firstOrFail();
+        $walkInId = (int) (\App\Models\AccountMap::current()->walk_in_ledger_id ?: 0);
+        $client = Ledger::where('type', 'client')->when($walkInId, fn ($q) => $q->where('id', '!=', $walkInId))->firstOrFail();
+        $product = Product::where('batch_required', true)->firstOrFail();
+
+        $this->post(route('purchases.store'), [
+            'godown_id' => $godown->id,
+            'supplier_ledger_id' => $supplier->id,
+            'purchase_date' => now()->toDateString(),
+            'settlement_type' => 'credit',
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_no' => 'BR-LOOP',
+                'expiry_date' => now()->addYear()->toDateString(),
+                'qty' => 5,
+                'rate' => 40,
+                'discount_pct' => 0,
+            ]],
+        ])->assertSessionHasNoErrors();
+
+        $batchId = ProductBatch::where('batch_no', 'BR-LOOP')->value('id');
+        $this->post(route('sales.store'), [
+            'godown_id' => $godown->id,
+            'client_ledger_id' => $client->id,
+            'invoice_date' => now()->toDateString(),
+            'settlement_type' => 'credit',
+            'items' => [[
+                'product_id' => $product->id,
+                'batch_id' => $batchId,
+                'qty' => 1,
+                'rate' => 90,
+                'discount_pct' => 0,
+            ]],
+        ])->assertSessionHasNoErrors();
+
+        $sale = Sale::latest('id')->firstOrFail();
+
+        // Loading with party_id must 200 (not redirect loop) and list the open invoice.
+        // Party filter uses data-filter-submit (Select2 user pick) — not inline onchange
+        // which used to refresh-loop when Select2 initialized with a selected party.
+        $html = $this->get(route('bulk-receipts.create', ['party_id' => $client->id]))
+            ->assertOk()
+            ->assertSee($sale->invoice_no, false)
+            ->getContent();
+        $this->assertStringContainsString('data-filter-submit="1"', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="f-party_id"[^>]*onchange="this\.form\.submit\(\)"/',
+            $html
+        );
+
+        $this->get(route('bulk-payments.create', ['party_id' => $supplier->id]))
+            ->assertOk()
+            ->assertSee('data-filter-submit="1"', false);
+    }
+
     public function test_bulk_receipt_settles_full_then_partial_and_updates_ledger(): void
     {
         $this->actingAs($this->owner());

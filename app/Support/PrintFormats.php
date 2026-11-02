@@ -51,6 +51,17 @@ class PrintFormats
         return in_array($size, ['a4', 'half', 'quarter'], true) ? $size : 'a4';
     }
 
+    /**
+     * What "Print invoice" does: ask (chooser), browser (system print dialog), or pdf.
+     */
+    public static function defaultSalePrintAction(?CompanyProfile $company = null): string
+    {
+        $company ??= CompanyProfile::current();
+        $action = (string) ($company->invoice_print_action ?: 'ask');
+
+        return in_array($action, ['ask', 'browser', 'pdf'], true) ? $action : 'ask';
+    }
+
     public static function resolveSale(string $format): array
     {
         $meta = self::forSale()[$format] ?? self::forSale()['standard'] ?? [];

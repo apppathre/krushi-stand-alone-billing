@@ -1,9 +1,10 @@
-{{-- Print format picker + Marathi font-aware dialog. --}}
+{{-- Print invoice: system printer vs PDF chooser (defaults from App Control). --}}
 @php
     $formats = \App\Support\PrintFormats::forSale();
     $defaultFormat = \App\Support\PrintFormats::defaultSaleFormat();
     $defaultLang = \App\Support\PrintFormats::defaultSaleLang();
     $defaultSize = \App\Support\PrintFormats::defaultSaleSize();
+    $printAction = \App\Support\PrintFormats::defaultSalePrintAction();
     $defaultMeta = $formats[$defaultFormat] ?? [];
     $allowedDefaultSizes = $defaultMeta['sizes'] ?? ['a4'];
     if (! in_array($defaultSize, $allowedDefaultSizes, true)) {
@@ -18,28 +19,38 @@
         defaultLang: @js($defaultLang),
         defaultFormat: @js($defaultFormat),
         defaultSize: @js($defaultSize),
+        printAction: @js($printAction),
         pdfBase: @js(route('sales.pdf', $sale)),
         browserBase: @js(route('sales.print', $sale)),
         dcBase: @js(route('sales.dc', $sale)),
     })"
-    @click.outside="open = false; dialog = false"
+    @click.outside="open = false; dialog = false; chooser = false"
 >
     <div class="flex flex-wrap items-center gap-2">
         <button type="button" class="btn-accent" @click="quickPrint()">{{ __('Print invoice') }}</button>
         <a href="{{ route('sales.dc', [$sale, 'size' => $defaultSize, 'lang' => $defaultLang]) }}"
            target="_blank" class="btn-secondary">{{ __('Print DC') }}</a>
-        <button type="button" @click="open = !open" class="btn-secondary btn-sm">{{ __('Options') }} ▾</button>
+        <button type="button" @click="open = !open; chooser = false" class="btn-secondary btn-sm">{{ __('Options') }} ▾</button>
     </div>
 
     <div x-show="open" x-cloak class="absolute right-0 z-20 mt-1 w-80 rounded-xl border border-sage-dark bg-white py-1 shadow-lg">
         <p class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-ink-soft">
             {{ __('Default') }}: {{ $formats[$defaultFormat]['label'] ?? $defaultFormat }} · {{ strtoupper($defaultSize) }} · {{ strtoupper($defaultLang) }}
         </p>
+        <p class="px-4 pb-1 text-[10px] text-ink-soft">
+            @if ($printAction === 'browser')
+                {{ __('Print button → system printer') }}
+            @elseif ($printAction === 'pdf')
+                {{ __('Print button → PDF') }}
+            @else
+                {{ __('Print button → ask Print or PDF') }}
+            @endif
+        </p>
         <p class="px-4 pb-1 text-[10px] {{ $mrFontOk ? 'text-leaf' : 'text-amber-700' }}">
             {{ $mrFontOk ? __('Marathi PDF font ready') : __('Marathi PDF font missing — Browser print recommended') }}
         </p>
 
-        <p class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-ink-soft">{{ __('Format') }}</p>
+        <p class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-ink-soft">{{ __('Format') }} · {{ __('PDF') }}</p>
         @foreach ($formats as $key => $meta)
             @php
                 $label = app()->getLocale() === 'mr' ? ($meta['label_mr'] ?? $meta['label']) : ($meta['label'] ?? $key);
@@ -60,12 +71,16 @@
                             @elseif ($size === 'quarter') {{ __('1/4 page') }}
                             @else {{ strtoupper($size) }}
                             @endif
-                            · {{ $defaultLang === 'mr' ? __('Marathi') : __('English') }}
+                            · {{ $defaultLang === 'mr' ? __('Marathi') : __('English') }} · PDF
                         </button>
                     @endforeach
                     <button type="button" class="block w-full rounded-lg px-2 py-1 text-left text-xs text-ink-soft hover:bg-sage"
                             @click="choosePdf(@js($key), @js($meta['default_size'] ?? 'a4'), defaultLang === 'mr' ? 'en' : 'mr')">
-                        {{ $defaultLang === 'mr' ? __('Open in English') : __('Open in Marathi') }}
+                        {{ $defaultLang === 'mr' ? __('Open PDF in English') : __('Open PDF in Marathi') }}
+                    </button>
+                    <button type="button" class="block w-full rounded-lg px-2 py-1 text-left text-xs text-leaf hover:bg-sage"
+                            @click="openBrowser(@js($key), @js($meta['default_size'] ?? 'a4'), defaultLang)">
+                        {{ __('System print this format') }}
                     </button>
                 </div>
             </div>
@@ -75,7 +90,7 @@
         <p class="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wide text-ink-soft">{{ __('Best for Marathi') }}</p>
         <button type="button" class="block w-full px-4 py-2 text-left text-sm font-semibold text-leaf hover:bg-sage"
                 @click="openBrowser(defaultFormat, defaultSize, 'mr')">
-            {{ __('Browser print (clear Marathi)') }}
+            {{ __('System print (clear Marathi)') }}
         </button>
 
         <div class="my-1 border-t border-sage"></div>
@@ -87,6 +102,31 @@
         <a href="{{ route('settings.app-control') }}" class="block px-4 py-2 text-xs text-ink-soft hover:bg-sage">{{ __('Change print defaults…') }}</a>
     </div>
 
+    {{-- Default Print invoice chooser: system printer vs PDF --}}
+    <div x-show="chooser" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" @keydown.escape.window="chooser = false">
+        <div class="w-full max-w-md rounded-2xl border border-sage-dark bg-white p-5 shadow-xl" @click.stop>
+            <h3 class="font-display text-lg font-semibold text-leaf-dark">{{ __('Print invoice') }}</h3>
+            <p class="mt-2 text-sm text-ink-soft">
+                {{ __('Choose how to print. System printer opens the Windows/OS print dialog (default printer).') }}
+            </p>
+            <p class="mt-1 text-xs text-ink-soft">
+                {{ $formats[$defaultFormat]['label'] ?? $defaultFormat }} · {{ strtoupper($defaultSize) }} · {{ strtoupper($defaultLang) }}
+            </p>
+            <div class="mt-4 space-y-2">
+                <button type="button" class="btn-primary w-full justify-center" @click="goBrowserPrint()">
+                    {{ __('Print — system printer') }}
+                </button>
+                <button type="button" class="btn-secondary w-full justify-center" @click="goPdfFromChooser()">
+                    {{ __('Open PDF') }}
+                </button>
+            </div>
+            <button type="button" class="mt-3 w-full text-center text-sm text-ink-soft" @click="chooser = false">{{ __('Cancel') }}</button>
+            <p class="mt-3 text-center text-[11px] text-ink-soft">
+                <a href="{{ route('settings.app-control') }}" class="text-leaf hover:underline">{{ __('Set default (always ask / printer / PDF)') }}</a>
+            </p>
+        </div>
+    </div>
+
     {{-- Dialog when Marathi PDF font is not available --}}
     <div x-show="dialog" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" @keydown.escape.window="dialog = false">
         <div class="w-full max-w-md rounded-2xl border border-sage-dark bg-white p-5 shadow-xl" @click.stop>
@@ -96,7 +136,7 @@
             </p>
             <div class="mt-4 space-y-2">
                 <button type="button" class="btn-primary w-full justify-center" @click="confirmBrowser()">
-                    {{ __('Browser print — clearest Marathi') }}
+                    {{ __('System print — clearest Marathi') }}
                 </button>
                 <button type="button" class="btn-secondary w-full justify-center" @click="confirmEnglishPdf()">
                     {{ __('English PDF (always works)') }}

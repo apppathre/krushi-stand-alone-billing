@@ -26,6 +26,14 @@ class BulkReceiptController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'name_mr', 'phone']);
 
+        // Keep the selected party in the list after settle (no open dues left).
+        if ($partyId > 0 && ! $parties->contains(fn ($p) => (int) $p->id === $partyId)) {
+            $picked = Ledger::clients()->whereKey($partyId)->first(['id', 'name', 'name_mr', 'phone']);
+            if ($picked) {
+                $parties = $parties->prepend($picked)->values();
+            }
+        }
+
         $dues = collect();
         if ($partyId > 0) {
             $dues = Sale::with('client')

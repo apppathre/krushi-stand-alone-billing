@@ -72,7 +72,7 @@
                 <h2 class="card-title">{{ __('Invoice print defaults') }}</h2>
                 <p class="text-xs text-ink-soft">{{ __('Pre-selected on the Print menu. Staff can still pick another format or language.') }}</p>
             </div>
-            <div class="card-body grid gap-4 md:grid-cols-3">
+            <div class="card-body grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <x-select-field name="default_invoice_print_format" :label="__('Default format')"
                     :value="old('default_invoice_print_format', $company->default_invoice_print_format ?: 'standard')"
                     :options="$printFormats" required />
@@ -82,6 +82,15 @@
                 <x-select-field name="default_print_size" :label="__('Default paper size')"
                     :value="old('default_print_size', $company->default_print_size ?: 'a4')"
                     :options="['a4' => __('A4'), 'half' => __('Half (A5)'), 'quarter' => __('1/4 page')]" required />
+                <x-select-field name="invoice_print_action" :label="__('Print invoice button')"
+                    :value="old('invoice_print_action', $company->invoice_print_action ?: 'ask')"
+                    :options="[
+                        'ask' => __('Ask — Print or PDF'),
+                        'browser' => __('System printer (browser dialog)'),
+                        'pdf' => __('Open PDF directly'),
+                    ]"
+                    :hint="__('Ask shows a choice dialog. System printer uses the OS default printer dialog.')"
+                    required />
             </div>
         </section>
 
