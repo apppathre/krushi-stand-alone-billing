@@ -61,14 +61,21 @@ class User extends Authenticatable
         return $this->role?->slug === 'owner';
     }
 
-    /** Godowns this user may work in (owners: all active godowns). Request-memoized. */
+    public function isManager(): bool
+    {
+        $this->loadMissing('role');
+
+        return $this->role?->slug === 'manager';
+    }
+
+    /** Godowns this user may work in (owner/manager: all active godowns). Request-memoized. */
     public function accessibleGodowns(): Collection
     {
         if ($this->godownCache !== null) {
             return $this->godownCache;
         }
 
-        if ($this->isOwner()) {
+        if ($this->isOwner() || $this->isManager()) {
             return $this->godownCache = Godown::where('is_active', true)->orderBy('name')->get(['id', 'name', 'name_mr', 'code', 'is_active']);
         }
 

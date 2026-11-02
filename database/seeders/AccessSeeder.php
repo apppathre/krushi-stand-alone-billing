@@ -109,6 +109,17 @@ class AccessSeeder extends Seeder
         'maintenance' => ['g_admin', 'Server maintenance', 'सर्व्हर देखभाल', 'maintenance.index', 'cog', 86],
     ];
 
+    /**
+     * Owner-only menus — Manager gets everything else with full rights.
+     * Keep these off Manager so they cannot take over app control / roles / menus / server.
+     */
+    private const OWNER_ONLY_MENUS = [
+        'settings_app_control',
+        'maintenance',
+        'roles',
+        'menus',
+    ];
+
     /** role slug => menu key => permission letters (v=view a=add e=edit d=delete) */
     private const GRANTS = [
         'cashier' => [
@@ -176,6 +187,7 @@ class AccessSeeder extends Seeder
     {
         $roles = [
             'owner' => ['Owner', 'मालक', 'Full access to everything'],
+            'manager' => ['Manager', 'व्यवस्थापक', 'All shop access except owner-only settings'],
             'cashier' => ['Cashier', 'रोखपाल', 'Billing and customer handling'],
             'storekeeper' => ['Storekeeper', 'भांडारपाल', 'Stock, purchases and product masters'],
         ];
@@ -204,12 +216,26 @@ class AccessSeeder extends Seeder
         Menu::whereIn('key', ['g_inventory', 'g_sales', 'g_books', 'g_accounts'])->update(['is_active' => false]);
         // Older combined "Registers & GST" parent is replaced by Registers + GST groups above.
 
-        foreach ($menuModels as $menu) {
+        foreach ($menuModels as $key => $menu) {
             if (! $menu->route_name) {
                 continue;
             }
             RoleMenu::updateOrCreate(
                 ['role_id' => $roleModels['owner']->id, 'menu_id' => $menu->id],
+                ['can_view' => true, 'can_add' => true, 'can_edit' => true, 'can_delete' => true],
+            );
+
+            // Manager: same as owner on day-to-day menus; strip owner-only keys.
+            if (in_array($key, self::OWNER_ONLY_MENUS, true)) {
+                RoleMenu::where('role_id', $roleModels['manager']->id)
+                    ->where('menu_id', $menu->id)
+                    ->delete();
+
+                continue;
+            }
+
+            RoleMenu::updateOrCreate(
+                ['role_id' => $roleModels['manager']->id, 'menu_id' => $menu->id],
                 ['can_view' => true, 'can_add' => true, 'can_edit' => true, 'can_delete' => true],
             );
         }

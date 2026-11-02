@@ -43,6 +43,9 @@ class UserController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         $data = $this->validated($request);
+        if ($deny = $this->denyNonOwnerRoleChange($request, null, (int) $data['role_id'])) {
+            return $deny;
+        }
         $plainPassword = (string) ($data['password'] ?? '');
 
         $user = DB::transaction(function () use ($data, $request) {
@@ -71,6 +74,9 @@ class UserController extends Controller
             $data['is_active'] = true; // cannot disable yourself
             $data['role_id'] = $user->role_id;
         }
+        if ($deny = $this->denyNonOwnerRoleChange($request, $user, (int) ($data['role_id'] ?? $user->role_id))) {
+            return $deny;
+        }
         DB::transaction(function () use ($user, $data, $request) {
             $user->update($data);
             $this->syncRelations($user, $request);
@@ -83,6 +89,9 @@ class UserController extends Controller
     {
         if ($user->id === $request->user()->id) {
             return $this->failedResponse($request, __('You cannot delete your own account.'));
+        }
+        if ($user->isOwner() && ! $request->user()->isOwner()) {
+            return $this->failedResponse($request, __('Only an owner can manage the Owner role.'));
         }
         if ($user->isOwner() && User::whereHas('role', fn ($q) => $q->where('slug', 'owner'))->count() <= 1) {
             return $this->failedResponse($request, __('The last owner cannot be deleted.'));
@@ -103,6 +112,9 @@ class UserController extends Controller
 
     public function setPassword(Request $request, User $user): JsonResponse|RedirectResponse
     {
+        if ($user->isOwner() && ! $request->user()->isOwner()) {
+            return $this->failedResponse($request, __('Only an owner can manage the Owner role.'));
+        }
         $data = $request->validate([
             'password' => ['required', 'confirmed', Password::min(8)],
         ]);
@@ -113,6 +125,21 @@ class UserController extends Controller
             $this->withWelcomeMailNote(__('Password updated.'), $user, $data['password']),
             'users.index'
         );
+    }
+
+    /** Non-owners cannot create/edit Owner accounts or assign the owner role. */
+    private function denyNonOwnerRoleChange(Request $request, ?User $target, int $roleId): JsonResponse|RedirectResponse|null
+    {
+        if ($request->user()?->isOwner()) {
+            return null;
+        }
+
+        $ownerRoleId = (int) Role::where('slug', 'owner')->value('id');
+        if ($target?->isOwner() || ($ownerRoleId > 0 && $roleId === $ownerRoleId)) {
+            return $this->failedResponse($request, __('Only an owner can manage the Owner role.'));
+        }
+
+        return null;
     }
 
     /**
@@ -145,6 +172,9 @@ class UserController extends Controller
         if ($user->id === $request->user()->id) {
             return $this->failedResponse($request, __('You cannot disable your own account.'));
         }
+        if ($user->isOwner() && ! $request->user()->isOwner()) {
+            return $this->failedResponse($request, __('Only an owner can manage the Owner role.'));
+        }
         if ($user->isOwner() && $user->is_active && User::whereHas('role', fn ($q) => $q->where('slug', 'owner'))->where('is_active', true)->count() <= 1) {
             return $this->failedResponse($request, __('The last owner cannot be disabled.'));
         }
@@ -167,9 +197,15 @@ class UserController extends Controller
             ->orderBy('sort_order')
             ->get();
 
+        $roles = Role::orderBy('id')->get();
+        // Only an owner may assign / keep the Owner role.
+        if (! auth()->user()?->isOwner()) {
+            $roles = $roles->reject(fn (Role $r) => $r->slug === 'owner')->values();
+        }
+
         return [
             'user' => $user,
-            'roles' => Role::orderBy('id')->get(),
+            'roles' => $roles,
             'godowns' => Godown::where('is_active', true)->orderBy('name')->get(),
             'menuGroups' => $leafMenus->groupBy(function (Menu $m) {
                 $section = $m->parent;
