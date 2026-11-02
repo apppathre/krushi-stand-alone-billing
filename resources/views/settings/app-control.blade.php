@@ -110,10 +110,10 @@
                 <x-select-field name="live_stock_default_view" :label="__('Default board layout')"
                     :value="old('live_stock_default_view', $company->live_stock_default_view ?? 'table')"
                     :options="['table' => __('Full table (scroll)'), 'cards' => __('Cards / tiles')]" />
-                <x-select-field name="live_stock_theme" :label="__('Default colour mode')"
+                <x-select-field name="live_stock_theme" :label="__('Default board colour')"
                     :value="old('live_stock_theme', $company->live_stock_theme ?? 'day')"
-                    :options="['day' => __('Day (cream — recommended)'), 'night' => __('Night (dark TV)')]"
-                    :hint="__('Board viewers can still switch layout and day/night from buttons on the screen.')" />
+                    :options="['day' => __('White board (professional)'), 'night' => __('Black board')]"
+                    :hint="__('TV screen buttons can still switch Table/Cards and White/Black.')" />
                 <p class="text-xs text-ink-soft md:col-span-2">
                     {{ __('Only items with “Show on live stock board” in Item Master appear. Qty refreshes automatically.') }}
                 </p>
