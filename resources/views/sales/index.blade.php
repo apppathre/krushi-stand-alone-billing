@@ -3,7 +3,7 @@
     $formItems = old('items', $editItems ?? []);
     $partyPrefill = old('client_ledger_id', $editing?->client_ledger_id ?? '');
     $statePrefill = old('supply_state_code', $editing?->supply_state_code ?? $companyState);
-    $settlePrefill = old('settlement_type', ((float) old('paid_amount', $editing?->paid_amount ?? 0) > 0) ? 'cash' : ($editing ? (((float) $editing->paid_amount > 0) ? 'cash' : 'credit') : 'credit'));
+    $settlePrefill = old('settlement_type', $editing?->settlement_type ?: (((float) ($editing?->paid_amount ?? 0) > 0) ? 'cash' : 'credit'));
     $paidPrefill = (float) old('paid_amount', $editing?->paid_amount ?? 0);
     $termsPrefill = old('terms', $defaultTerms ?? ($editing?->terms ?? ''));
     $creditDaysBill = old('credit_days', $editing?->credit_days);

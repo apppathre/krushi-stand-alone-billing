@@ -78,6 +78,7 @@ class SaleService
                 (string) $data['invoice_date'],
             );
 
+            $settlement = ($data['settlement_type'] ?? null) === 'cash' ? 'cash' : 'credit';
             $paidNow = min((float) ($data['paid_amount'] ?? 0), (float) $calc['totals']['grand_total']);
             $this->assertCreditLimit($company, $client, (float) $calc['totals']['grand_total'] - $paidNow);
 
@@ -110,6 +111,7 @@ class SaleService
                 'due_date' => $dueDate,
                 'terms' => TermsHtml::sanitize($data['terms'] ?? null)
                     ?: TermsHtml::fromCompany($company->invoice_terms),
+                'settlement_type' => $settlement,
                 'status' => 'active',
                 'user_id' => $userId,
                 'salesperson_user_id' => $salespersonId,
@@ -332,6 +334,7 @@ class SaleService
             }
             $sale->items()->delete();
 
+            $settlement = ($data['settlement_type'] ?? null) === 'cash' ? 'cash' : 'credit';
             $paidNow = min((float) ($data['paid_amount'] ?? 0), (float) $calc['totals']['grand_total']);
             $this->assertCreditLimit($company, $client, (float) $calc['totals']['grand_total'] - $paidNow);
 
@@ -359,6 +362,7 @@ class SaleService
                 'due_date' => $dueDate,
                 'terms' => TermsHtml::sanitize($data['terms'] ?? null)
                     ?: TermsHtml::fromCompany($company->invoice_terms),
+                'settlement_type' => $settlement,
                 'status' => 'active',
                 'paid_amount' => 0,
                 'user_id' => $userId ?? $sale->user_id,
