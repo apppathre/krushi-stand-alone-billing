@@ -62,7 +62,9 @@ class SaleController extends Controller
         $perPage = $this->listPerPage($request);
         $rows = $this->saleQuery($request, $from, $to)->paginate($perPage)->withQueryString();
 
-        if ($request->ajax() || $request->boolean('list')) {
+        // Drawer open sends X-Requested-With + X-UI-Drawer — return full browse (filters).
+        // autoFilter sends list=1 for the table-only partial.
+        if ($request->boolean('list')) {
             return view('sales._list', compact('rows'));
         }
 

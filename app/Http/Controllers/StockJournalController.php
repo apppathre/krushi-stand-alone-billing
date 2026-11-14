@@ -113,7 +113,8 @@ class StockJournalController extends Controller
             ->orderByDesc('journal_date')->orderByDesc('id')
             ->paginate($perPage)->withQueryString();
 
-        if ($request->ajax() || $request->boolean('list')) {
+        // Drawer open → full browse; autoFilter / Filter button uses list=1 for table-only.
+        if ($request->boolean('list')) {
             return view('stock-journals._list', [
                 'rows' => $rows,
                 'type' => $type,

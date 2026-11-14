@@ -63,7 +63,8 @@ class PurchaseOrderController extends Controller
             ->orderByDesc('order_date')->orderByDesc('id')
             ->paginate($perPage)->withQueryString();
 
-        if ($request->ajax() || $request->boolean('list')) {
+        // Drawer open → full browse; autoFilter uses list=1 for table-only.
+        if ($request->boolean('list')) {
             return view('purchase-orders._list', compact('rows'));
         }
 

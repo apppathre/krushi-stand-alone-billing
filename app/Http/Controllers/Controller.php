@@ -33,30 +33,36 @@ abstract class Controller
 
     /**
      * List/filter date range for sale & purchase desks.
-     * Default = today; respects FY bounds. Presets: today | yesterday | month.
+     * Default = this month (so Recent shows prior bills); respects FY bounds.
+     * Presets: today | yesterday | month | fy.
+     * Anchor date = today clamped into the active FY (same idea as voucher dates).
      */
     protected function listDateRange(Request $request): array
     {
         $fy = \App\Models\FinancialYear::current();
         $fyStart = $fy->start_date->toDateString();
         $fyEnd = $fy->end_date->toDateString();
-        $today = min(now()->toDateString(), $fyEnd);
+
+        $anchor = now()->toDateString();
+        if ($anchor > $fyEnd) {
+            $anchor = $fyEnd;
+        } elseif ($anchor < $fyStart) {
+            $anchor = $fyStart;
+        }
+        $today = $anchor;
+        $monthStart = max(\Illuminate\Support\Carbon::parse($anchor)->startOfMonth()->toDateString(), $fyStart);
+        $yesterday = max(\Illuminate\Support\Carbon::parse($anchor)->subDay()->toDateString(), $fyStart);
 
         $preset = $request->input('preset');
-        if (! $request->filled('from') && ! $request->filled('to') && $preset) {
-            [$from, $to] = match ($preset) {
-                'yesterday' => [
-                    now()->subDay()->toDateString(),
-                    now()->subDay()->toDateString(),
-                ],
-                'month' => [
-                    now()->startOfMonth()->toDateString(),
-                    $today,
-                ],
-                default => [$today, $today],
+        if (! $request->filled('from') && ! $request->filled('to')) {
+            [$from, $to] = match ($preset ?: 'month') {
+                'today' => [$today, $today],
+                'yesterday' => [$yesterday, $yesterday],
+                'fy' => [$fyStart, $today],
+                default => [$monthStart, $today], // month (and open with no preset)
             };
         } else {
-            $from = $request->input('from') ?: $today;
+            $from = $request->input('from') ?: $monthStart;
             $to = $request->input('to') ?: $today;
         }
 

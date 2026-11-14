@@ -17,12 +17,21 @@ Alpine.data('autoFilter', (target = '#list-results') => ({
     init() {
         // Pagination links inside the results container are loaded in place too.
         this._onClick = (e) => {
-            const link = e.target.closest(`${target} a[href]`);
+            const root = this.$el.closest('#ui-drawer-body') || document;
+            const container = root.querySelector?.(target) || document.querySelector(target);
+            if (!container || !container.contains(e.target)) return;
+            const link = e.target.closest('a[href]');
             if (!link || link.target === '_blank' || !/[?&]page=/.test(link.href)) {
                 return;
             }
             e.preventDefault();
-            this.load(link.href);
+            try {
+                const u = new URL(link.href, window.location.origin);
+                u.searchParams.set('list', '1');
+                this.load(u.pathname + u.search);
+            } catch (_) {
+                this.load(link.href);
+            }
         };
         document.addEventListener('click', this._onClick);
     },
@@ -55,6 +64,9 @@ Alpine.data('autoFilter', (target = '#list-results') => ({
         } else if (preset === 'month') {
             from.value = `${now.getFullYear()}-${this.pad(now.getMonth() + 1)}-01`;
             to.value = today;
+        } else if (preset === 'fy') {
+            from.value = this.$el.getAttribute('data-fy-start') || `${now.getFullYear()}-04-01`;
+            to.value = today;
         } else {
             from.value = today;
             to.value = today;
@@ -70,6 +82,10 @@ Alpine.data('autoFilter', (target = '#list-results') => ({
                 params.append(key, value);
             }
         });
+        // Ask controllers for the table-only partial (drawer open must get full browse).
+        if (! params.has('list')) {
+            params.set('list', '1');
+        }
         const base = form.getAttribute('action') || window.location.pathname;
         const qs = params.toString();
 
@@ -85,11 +101,24 @@ Alpine.data('autoFilter', (target = '#list-results') => ({
         this.$el.querySelectorAll('input:not([type=hidden]):not([type=checkbox]), select').forEach((el) => {
             el.value = '';
         });
-        this.setRange('today');
+        this.setRange('month');
+    },
+
+    resultsRoot() {
+        // Prefer the list inside the same drawer / form scope (avoid wrong page match).
+        const drawer = this.$el.closest('#ui-drawer-body');
+        if (drawer) {
+            return drawer.querySelector(target);
+        }
+        return document.querySelector(target);
+    },
+
+    inDrawer() {
+        return !!this.$el.closest('#ui-drawer-body');
     },
 
     async load(url) {
-        const container = document.querySelector(target);
+        const container = this.resultsRoot();
         if (!container) {
             window.location.href = url;
             return;
@@ -122,7 +151,10 @@ Alpine.data('autoFilter', (target = '#list-results') => ({
                 return;
             }
             container.innerHTML = fresh.innerHTML;
-            window.history.replaceState({}, '', url);
+            // Do not rewrite the desk URL while filtering inside a drawer.
+            if (! this.inDrawer()) {
+                window.history.replaceState({}, '', url);
+            }
         } catch (error) {
             if (error.name !== 'AbortError') {
                 window.location.href = url;
