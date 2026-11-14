@@ -31,7 +31,7 @@
         <x-screen-help :topic="$helpTopic" />
         @if (! $isEdit)
             <button type="button" class="btn-secondary btn-sm"
-                    onclick="KrushiDrawer.open('{{ route('stock-journals.'.$type.'.browse') }}', '{{ __('Recent') }} — {{ $title }}', '48rem')">
+                    onclick="KrushiDrawer.open('{{ route('stock-journals.'.$type.'.browse', ['preset' => 'month']) }}', '{{ __('Recent') }} — {{ $title }}', '72rem')">
                 <x-icon name="list" class="h-4 w-4" /> <span class="page-head__btn-label">{{ __('Recent') }}</span>
             </button>
         @else

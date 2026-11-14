@@ -7,7 +7,7 @@
         <x-screen-help topic="purchase" />
         <a href="{{ route('purchase-orders.index') }}" class="btn-secondary btn-sm">{{ __('Purchase Order') }}</a>
         <button type="button" class="btn-secondary btn-sm"
-                onclick="KrushiDrawer.open('{{ route('purchases.browse') }}', '{{ __('Recent purchases') }}', '52rem')">
+                onclick="KrushiDrawer.open('{{ route('purchases.browse', ['preset' => 'month']) }}', '{{ __('Recent purchases') }}', '80rem')">
             <x-icon name="list" class="h-4 w-4" /> <span class="page-head__btn-label">{{ __('Recent') }}</span>
         </button>
     </x-page-head>

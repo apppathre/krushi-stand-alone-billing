@@ -13,7 +13,7 @@
         <x-screen-help topic="purchase_order" />
         @if (! $isEdit)
             <button type="button" class="btn-secondary btn-sm"
-                    onclick="KrushiDrawer.open('{{ route('purchase-orders.browse') }}', '{{ __('Recent POs') }}', '48rem')">
+                    onclick="KrushiDrawer.open('{{ route('purchase-orders.browse', ['preset' => 'month']) }}', '{{ __('Recent POs') }}', '72rem')">
                 <x-icon name="list" class="h-4 w-4" /> <span class="page-head__btn-label">{{ __('Recent') }}</span>
             </button>
             <a href="{{ route('purchases.index') }}" class="btn-secondary btn-sm">{{ __('Purchase bill') }}</a>

@@ -6,7 +6,7 @@
     <x-page-head class="mb-3" :title="__('New Invoice')" :blurb="__('Enter the invoice here. Open recent from the list button.')">
         <x-screen-help topic="sale" />
         <button type="button" class="btn-secondary btn-sm"
-                onclick="KrushiDrawer.open('{{ route('sales.browse') }}', '{{ __('Recent invoices') }}', '52rem')">
+                onclick="KrushiDrawer.open('{{ route('sales.browse', ['preset' => 'month']) }}', '{{ __('Recent invoices') }}', '80rem')">
             <x-icon name="list" class="h-4 w-4" /> <span class="page-head__btn-label">{{ __('Recent') }}</span>
         </button>
     </x-page-head>

@@ -24,7 +24,7 @@
     "src": "node_modules/select2/dist/css/select2.min.css"
   },
   "resources/css/app.css": {
-    "file": "assets/app-p5SJA15k.css",
+    "file": "assets/app-DOql1sV4.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -33,7 +33,7 @@
     "src": "resources/css/select2-krushi.css"
   },
   "resources/js/app.js": {
-    "file": "assets/app-adYEDtO4.js",
+    "file": "assets/app-BtAL_04x.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,

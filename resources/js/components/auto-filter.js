@@ -54,18 +54,22 @@ Alpine.data('autoFilter', (target = '#list-results') => ({
         if (!from || !to) return;
 
         const now = new Date();
-        const today = this.ymd(now);
+        const today = this.$el.getAttribute('data-today') || this.ymd(now);
+        const monthStart = this.$el.getAttribute('data-month-start')
+            || `${now.getFullYear()}-${this.pad(now.getMonth() + 1)}-01`;
+        const fyStart = this.$el.getAttribute('data-fy-start') || `${now.getFullYear()}-04-01`;
+
         if (preset === 'yesterday') {
-            const y = new Date(now);
+            const y = new Date(`${today}T12:00:00`);
             y.setDate(y.getDate() - 1);
             const s = this.ymd(y);
             from.value = s;
             to.value = s;
         } else if (preset === 'month') {
-            from.value = `${now.getFullYear()}-${this.pad(now.getMonth() + 1)}-01`;
+            from.value = monthStart;
             to.value = today;
         } else if (preset === 'fy') {
-            from.value = this.$el.getAttribute('data-fy-start') || `${now.getFullYear()}-04-01`;
+            from.value = fyStart;
             to.value = today;
         } else {
             from.value = today;

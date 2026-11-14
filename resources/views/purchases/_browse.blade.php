@@ -1,18 +1,31 @@
 @php
     $perPage = $perPage ?? (int) request('per_page', 10);
-    $fyStart = \App\Models\FinancialYear::current()->start_date->toDateString();
+    $fy = \App\Models\FinancialYear::current();
+    $fyStart = $fy->start_date->toDateString();
+    $drawerTitle = __('Recent purchases');
+    $drawerWidth = '80rem';
+    $activePreset = request('preset');
+    if (! $activePreset && ! request()->filled('from') && ! request()->filled('to')) {
+        $activePreset = 'month';
+    }
 @endphp
 <div class="space-y-3">
+    <div class="flex flex-wrap gap-1.5">
+        @foreach (['today' => __('Today'), 'yesterday' => __('Yesterday'), 'month' => __('This month'), 'fy' => __('This year')] as $key => $label)
+            <button type="button"
+                    class="btn-secondary btn-sm {{ $activePreset === $key ? 'ring-2 ring-leaf' : '' }}"
+                    onclick="KrushiDrawer.open(@js(route('purchases.browse', ['preset' => $key, 'per_page' => $perPage])), @js($drawerTitle), @js($drawerWidth))">
+                {{ $label }}
+            </button>
+        @endforeach
+    </div>
+
     <form method="GET" action="{{ route('purchases.browse') }}" class="space-y-2"
           data-fy-start="{{ $fyStart }}"
+          data-today="{{ $to }}"
+          data-month-start="{{ \Illuminate\Support\Carbon::parse($to)->startOfMonth()->toDateString() }}"
           x-data="autoFilter('#list-results')"
           @input.debounce.350ms="run()" @change="run()" @submit.prevent="run()">
-        <div class="flex flex-wrap gap-1.5">
-            <button type="button" class="btn-secondary btn-sm" @click="setRange('today')">{{ __('Today') }}</button>
-            <button type="button" class="btn-secondary btn-sm" @click="setRange('yesterday')">{{ __('Yesterday') }}</button>
-            <button type="button" class="btn-secondary btn-sm" @click="setRange('month')">{{ __('This month') }}</button>
-            <button type="button" class="btn-secondary btn-sm" @click="setRange('fy')">{{ __('This year') }}</button>
-        </div>
         <div class="flex flex-wrap items-end gap-2">
             <label class="block text-xs">
                 <span class="text-ink-500">{{ __('Date from') }}</span>
