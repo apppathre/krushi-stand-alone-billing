@@ -13,6 +13,9 @@ use App\Services\InvoiceNumberGenerator;
 use App\Services\ProductCatalog;
 use App\Services\PurchaseService;
 use App\Support\IndianStates;
+use App\Support\PdfMaker;
+use App\Support\PrintFonts;
+use App\Support\PrintFormats;
 use App\Support\WorkContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -167,7 +170,10 @@ class PurchaseController extends Controller
             'payment_mode' => ['nullable', 'in:cash,bank,upi'],
             'payment_reference' => ['nullable', 'string', 'max:100'],
             'purchase_order_id' => ['nullable', 'integer', 'exists:purchase_orders,id'],
+            'after_save' => ['nullable', 'in:show,print'],
         ]);
+        $afterSave = $data['after_save'] ?? 'show';
+        unset($data['after_save']);
 
         // Infer settlement when older clients omit it: paid > 0 ⇒ cash, else credit.
         $settlement = $data['settlement_type']
@@ -205,7 +211,18 @@ class PurchaseController extends Controller
             return back()->withInput()->withErrors($e->errors());
         }
 
-        return redirect()->route('purchases.show', $purchase)->with('status', __('Purchase :no saved successfully.', ['no' => $purchase->purchase_no]));
+        $status = __('Purchase :no saved successfully.', ['no' => $purchase->purchase_no]);
+        if ($afterSave === 'print') {
+            $company = CompanyProfile::current();
+            $lang = PrintFormats::defaultSaleLang($company);
+            $size = PrintFormats::defaultSaleSize($company);
+
+            return redirect()
+                ->route('purchases.pdf', [$purchase, 'size' => $size, 'lang' => $lang])
+                ->with('status', $status);
+        }
+
+        return redirect()->route('purchases.show', $purchase)->with('status', $status);
     }
 
     public function show(Request $request, Purchase $purchase)
@@ -223,6 +240,74 @@ class PurchaseController extends Controller
         $purchase->load(['items.product.unit', 'supplier', 'godown', 'payments.ledger']);
 
         return view('purchases.details', compact('purchase'));
+    }
+
+    public function pdf(Request $request, Purchase $purchase)
+    {
+        $this->authorizeGodown($request, $purchase->godown_id);
+        $company = CompanyProfile::current();
+        $size = (string) $request->input('size', PrintFormats::defaultSaleSize($company));
+        if (! in_array($size, ['a4', 'half', 'quarter'], true)) {
+            $size = 'a4';
+        }
+        $lang = (string) $request->input('lang', PrintFormats::defaultSaleLang($company));
+        if (! in_array($lang, ['en', 'mr'], true)) {
+            $lang = 'en';
+        }
+
+        $purchase->load([
+            'items.product.unit',
+            'items.batch',
+            'supplier',
+            'godown',
+            'payments',
+        ]);
+
+        $paper = match ($size) {
+            'half' => ['paper' => 'a5', 'orientation' => 'portrait'],
+            'quarter' => ['paper' => [105, 148], 'orientation' => 'portrait'],
+            default => ['paper' => 'a4', 'orientation' => 'portrait'],
+        };
+
+        if ($lang === 'mr' && ! PrintFonts::ensureInstalled()) {
+            $lang = 'en';
+        }
+
+        $mpdf = PdfMaker::fromView('purchases.pdf', [
+            'purchase' => $purchase,
+            'company' => $company,
+            'printSize' => $size,
+            'printLang' => $lang,
+            'printFontFamily' => PrintFonts::cssFamily($lang),
+        ], $paper, $lang);
+
+        $file = 'purchase-'.str_replace('/', '-', $purchase->purchase_no).'-'.$size.'.pdf';
+
+        return PdfMaker::response($mpdf, $file, $request->boolean('download'));
+    }
+
+    /** Browser print preview with PDF embed. */
+    public function printPreview(Request $request, Purchase $purchase)
+    {
+        $this->authorizeGodown($request, $purchase->godown_id);
+        $company = CompanyProfile::current();
+        $size = (string) $request->input('size', PrintFormats::defaultSaleSize($company));
+        if (! in_array($size, ['a4', 'half', 'quarter'], true)) {
+            $size = 'a4';
+        }
+        $lang = (string) $request->input('lang', PrintFormats::defaultSaleLang($company));
+        if (! in_array($lang, ['en', 'mr'], true)) {
+            $lang = 'en';
+        }
+
+        $purchase->load(['supplier', 'godown']);
+
+        return view('purchases.print-browser', [
+            'purchase' => $purchase,
+            'company' => $company,
+            'printSize' => $size,
+            'printLang' => $lang,
+        ]);
     }
 
     public function payment(Request $request, Purchase $purchase): RedirectResponse

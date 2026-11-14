@@ -5,7 +5,8 @@
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2 no-print">
         <a href="{{ route('purchases.show', $purchase) }}" class="btn-secondary btn-sm">&larr; {{ __('Summary') }}</a>
-        <button type="button" onclick="window.print()" class="btn-secondary btn-sm">{{ __('Print') }}</button>
+        <a href="{{ route('purchases.pdf', $purchase) }}" target="_blank" class="btn-accent btn-sm">{{ __('Print PDF') }}</a>
+        <a href="{{ route('purchases.print', [$purchase, 'autoprint' => 1]) }}" target="_blank" class="btn-secondary btn-sm">{{ __('Print') }}</a>
     </div>
 
     <div class="card card-body mb-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">

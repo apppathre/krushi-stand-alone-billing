@@ -150,6 +150,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [PurchaseController::class, 'store'])->name('store');
         Route::get('{purchase}', [PurchaseController::class, 'show'])->name('show');
         Route::get('{purchase}/details', [PurchaseController::class, 'details'])->name('details');
+        Route::get('{purchase}/pdf', [PurchaseController::class, 'pdf'])->name('pdf');
+        Route::get('{purchase}/print', [PurchaseController::class, 'printPreview'])->name('print');
         Route::post('{purchase}/payments', [PurchaseController::class, 'payment'])->name('payments.store');
         Route::delete('{purchase}', [PurchaseController::class, 'cancel'])->name('cancel');
     });

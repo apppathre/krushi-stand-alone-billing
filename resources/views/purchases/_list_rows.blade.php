@@ -33,6 +33,7 @@
                     </td>
                     <td class="num whitespace-nowrap">
                         <a href="{{ route('purchases.show', $p) }}" class="btn-secondary btn-sm">{{ __('Open') }}</a>
+                        <a href="{{ route('purchases.pdf', $p) }}" target="_blank" class="btn-secondary btn-sm">{{ __('Print') }}</a>
                         @can('menu', ['purchases', 'delete'])
                             @unless ($p->isCancelled())
                                 <button type="button" class="btn-danger btn-sm"

@@ -153,7 +153,8 @@
                 ])
 
                 <div class="txn-sticky-actions flex flex-wrap gap-2">
-                    <button class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ __('Saving purchase…') }}">{{ __('Save purchase') }}</button>
+                    <button type="submit" name="after_save" value="show" class="btn-secondary flex-1 sm:flex-none" data-busy-label="{{ __('Saving purchase…') }}">{{ __('Save') }}</button>
+                    <button type="submit" name="after_save" value="print" class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ __('Saving purchase…') }}">{{ __('Save & Print') }}</button>
                 </div>
             </form>
         </section>
