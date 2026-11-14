@@ -88,7 +88,7 @@ class SaleController extends Controller
             })
             ->when(
                 $request->filled('client_id') || $request->filled('ledger_id'),
-                fn ($q) => $q->where('client_ledger_id', (int) $request->input('client_id', $request->input('ledger_id')))
+                fn ($q) => $q->where('client_ledger_id', (int) ($request->input('client_id') ?: $request->input('ledger_id')))
             )
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->input('payment') === 'due', fn ($q) => $q->where('status', 'active')->openDue())

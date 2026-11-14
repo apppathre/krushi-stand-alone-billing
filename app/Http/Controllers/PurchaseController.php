@@ -120,7 +120,7 @@ class PurchaseController extends Controller
             })
             ->when(
                 $request->filled('supplier_id') || $request->filled('ledger_id'),
-                fn ($q) => $q->where('supplier_ledger_id', (int) $request->input('supplier_id', $request->input('ledger_id')))
+                fn ($q) => $q->where('supplier_ledger_id', (int) ($request->input('supplier_id') ?: $request->input('ledger_id')))
             )
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->orderByDesc('purchase_date')->orderByDesc('id');
