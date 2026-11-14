@@ -25,7 +25,7 @@
                     <td class="num {{ $s->balance > 0 && ! $s->isCancelled() ? 'font-semibold text-accent' : '' }}">{{ money($s->balance) }}</td>
                     <td><x-sale-status :sale="$s" /></td>
                     <td class="num whitespace-nowrap">
-                        <a href="{{ route('sales.show', $s) }}" class="btn-secondary btn-sm">{{ __('View') }}</a>
+                        <a href="{{ route('sales.show', $s) }}" class="btn-secondary btn-sm">{{ __('Open') }}</a>
                         <a href="{{ route('sales.pdf', $s) }}" target="_blank" class="btn-secondary btn-sm">PDF</a>
                         @can('menu', ['sales', 'delete'])
                             @unless ($s->isCancelled())

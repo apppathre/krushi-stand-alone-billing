@@ -50,6 +50,7 @@ class PurchaseOrderController extends Controller
     public function browse(Request $request)
     {
         [$from, $to] = $this->listDateRange($request);
+        $perPage = $this->listPerPage($request);
         $rows = PurchaseOrder::with(['supplier', 'godown'])
             ->whereIn('godown_id', $this->godownScope($request))
             ->whereDate('order_date', '>=', $from)->whereDate('order_date', '<=', $to)
@@ -60,7 +61,7 @@ class PurchaseOrderController extends Controller
             })
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->orderByDesc('order_date')->orderByDesc('id')
-            ->paginate(15)->withQueryString();
+            ->paginate($perPage)->withQueryString();
 
         if ($request->ajax() || $request->boolean('list')) {
             return view('purchase-orders._list', compact('rows'));
@@ -70,6 +71,7 @@ class PurchaseOrderController extends Controller
             'rows' => $rows,
             'from' => $from,
             'to' => $to,
+            'perPage' => $perPage,
             'godowns' => $request->user()->accessibleGodowns(),
         ]);
     }

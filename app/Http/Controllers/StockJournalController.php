@@ -98,6 +98,7 @@ class StockJournalController extends Controller
     {
         abort_unless(isset(self::META[$type]), 404);
         [$from, $to] = $this->listDateRange($request);
+        $perPage = $this->listPerPage($request);
         $scope = $this->godownScope($request);
 
         $rows = StockJournal::with(['godown', 'toGodown'])
@@ -110,7 +111,7 @@ class StockJournalController extends Controller
             ->when($request->filled('q'), fn ($q) => $q->where('journal_no', 'like', '%'.$request->q.'%'))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->orderByDesc('journal_date')->orderByDesc('id')
-            ->paginate(15)->withQueryString();
+            ->paginate($perPage)->withQueryString();
 
         if ($request->ajax() || $request->boolean('list')) {
             return view('stock-journals._list', [
@@ -125,6 +126,7 @@ class StockJournalController extends Controller
             'type' => $type,
             'from' => $from,
             'to' => $to,
+            'perPage' => $perPage,
             'godowns' => $request->user()->accessibleGodowns(),
             'title' => __(self::META[$type][0]),
             'menuKey' => self::menuKey($type),

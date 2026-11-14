@@ -59,7 +59,8 @@ class SaleController extends Controller
     public function browse(Request $request)
     {
         [$from, $to] = $this->listDateRange($request);
-        $rows = $this->saleQuery($request, $from, $to)->paginate(15)->withQueryString();
+        $perPage = $this->listPerPage($request);
+        $rows = $this->saleQuery($request, $from, $to)->paginate($perPage)->withQueryString();
 
         if ($request->ajax() || $request->boolean('list')) {
             return view('sales._list', compact('rows'));
@@ -69,6 +70,7 @@ class SaleController extends Controller
             'rows' => $rows,
             'from' => $from,
             'to' => $to,
+            'perPage' => $perPage,
             'filterClients' => Ledger::clients()->orderBy('name')->get(['id', 'name', 'name_mr', 'phone']),
             'godowns' => $request->user()->accessibleGodowns(),
         ]);
@@ -84,7 +86,10 @@ class SaleController extends Controller
                 $q->where(fn ($w) => $w->where('invoice_no', 'like', $t)->orWhere('customer_name', 'like', $t)
                     ->orWhereHas('client', fn ($c) => $c->where('name', 'like', $t)->orWhere('phone', 'like', $t)));
             })
-            ->when($request->filled('client_id'), fn ($q) => $q->where('client_ledger_id', $request->client_id))
+            ->when(
+                $request->filled('client_id') || $request->filled('ledger_id'),
+                fn ($q) => $q->where('client_ledger_id', (int) $request->input('client_id', $request->input('ledger_id')))
+            )
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->when($request->input('payment') === 'due', fn ($q) => $q->where('status', 'active')->openDue())
             ->orderByDesc('invoice_date')->orderByDesc('id');

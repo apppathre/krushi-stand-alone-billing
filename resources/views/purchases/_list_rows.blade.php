@@ -32,7 +32,7 @@
                         @else <span class="badge-red">{{ __('Unpaid') }}</span> @endif
                     </td>
                     <td class="num whitespace-nowrap">
-                        <a href="{{ route('purchases.show', $p) }}" class="btn-secondary btn-sm">{{ __('View') }}</a>
+                        <a href="{{ route('purchases.show', $p) }}" class="btn-secondary btn-sm">{{ __('Open') }}</a>
                         @can('menu', ['purchases', 'delete'])
                             @unless ($p->isCancelled())
                                 <button type="button" class="btn-danger btn-sm"

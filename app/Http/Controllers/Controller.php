@@ -66,6 +66,18 @@ abstract class Controller
         return [$from, $to];
     }
 
+    /**
+     * Page size for Recent / browse drawers.
+     * Allowed: 10 | 20 | 50. Default 10.
+     */
+    protected function listPerPage(Request $request, int $default = 10): int
+    {
+        $allowed = [10, 20, 50];
+        $n = (int) $request->input('per_page', $default);
+
+        return in_array($n, $allowed, true) ? $n : $default;
+    }
+
     /** Ensure voucher date is inside the active financial year. */
     protected function assertActiveFyDate(string $date, string $field = 'date'): void
     {

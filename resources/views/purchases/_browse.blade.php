@@ -1,21 +1,41 @@
-{{-- Loaded in side drawer: filters + AJAX list --}}
-<div class="space-y-3" x-data>
-    <x-auto-filter target="#purchase-drawer-results" :action="route('purchases.browse')">
-        <div class="flex w-full flex-wrap items-center gap-1.5">
+@php($perPage = $perPage ?? (int) request('per_page', 10))
+<div class="space-y-3">
+    <form method="GET" action="{{ route('purchases.browse') }}" class="space-y-2"
+          x-data="autoFilter('#list-results')"
+          @input.debounce.350ms="run()" @change="run()" @submit.prevent="run()">
+        <div class="flex flex-wrap gap-1.5">
             <button type="button" class="btn-secondary btn-sm" @click="setRange('today')">{{ __('Today') }}</button>
             <button type="button" class="btn-secondary btn-sm" @click="setRange('yesterday')">{{ __('Yesterday') }}</button>
             <button type="button" class="btn-secondary btn-sm" @click="setRange('month')">{{ __('This month') }}</button>
         </div>
-        <x-field name="q" :label="__('Search')" :value="request('q')" :placeholder="__('Purchase no, supplier…')" class="w-full sm:w-48" />
-        <x-field name="from" type="date" :label="__('From')" :value="$from" class="w-full sm:w-36" />
-        <x-field name="to" type="date" :label="__('To')" :value="$to" class="w-full sm:w-36" />
-        <x-select-field name="supplier_id" :label="__('Supplier')" :value="request('supplier_id')" :placeholder="__('All')"
-            :options="$filterSuppliers->mapWithKeys(fn ($s) => [$s->id => $s->display_name])->all()" class="w-full sm:w-44" />
-        <x-select-field name="status" :label="__('Status')" :value="request('status')" :placeholder="__('All')"
-            :options="['active' => __('Active'), 'cancelled' => __('Cancelled')]" class="w-full sm:w-36" />
-    </x-auto-filter>
-
-    <div id="purchase-drawer-results">
-        @include('purchases._list_rows')
-    </div>
+        <div class="flex flex-wrap items-end gap-2">
+            <label class="block text-xs">
+                <span class="text-ink-500">{{ __('Date from') }}</span>
+                <input type="date" name="from" value="{{ $from }}" class="input input-sm mt-0.5 w-36">
+            </label>
+            <label class="block text-xs">
+                <span class="text-ink-500">{{ __('Date to') }}</span>
+                <input type="date" name="to" value="{{ $to }}" class="input input-sm mt-0.5 w-36">
+            </label>
+            <label class="block min-w-[10rem] flex-1 text-xs">
+                <span class="text-ink-500">{{ __('Supplier') }}</span>
+                <select name="supplier_id" class="input input-sm mt-0.5 w-full">
+                    <option value="">{{ __('All suppliers') }}</option>
+                    @foreach ($filterSuppliers as $s)
+                        <option value="{{ $s->id }}" @selected((string) request('supplier_id') === (string) $s->id)>{{ $s->display_name }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="block text-xs">
+                <span class="text-ink-500">{{ __('Show') }}</span>
+                <select name="per_page" class="input input-sm mt-0.5 w-20">
+                    @foreach ([10, 20, 50] as $n)
+                        <option value="{{ $n }}" @selected($perPage === $n)>{{ $n }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <input type="search" name="q" value="{{ request('q') }}" class="input input-sm w-36" placeholder="{{ __('Bill / search…') }}" autocomplete="off">
+        </div>
+    </form>
+    @include('purchases._list')
 </div>

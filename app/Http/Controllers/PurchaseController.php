@@ -91,7 +91,8 @@ class PurchaseController extends Controller
     public function browse(Request $request)
     {
         [$from, $to] = $this->listDateRange($request);
-        $rows = $this->purchaseQuery($request, $from, $to)->paginate(15)->withQueryString();
+        $perPage = $this->listPerPage($request);
+        $rows = $this->purchaseQuery($request, $from, $to)->paginate($perPage)->withQueryString();
 
         if ($request->ajax() || $request->boolean('list')) {
             return view('purchases._list', compact('rows'));
@@ -101,6 +102,7 @@ class PurchaseController extends Controller
             'rows' => $rows,
             'from' => $from,
             'to' => $to,
+            'perPage' => $perPage,
             'filterSuppliers' => Ledger::suppliers()->orderBy('name')->get(['id', 'name', 'name_mr']),
             'godowns' => $request->user()->accessibleGodowns(),
         ]);
@@ -116,7 +118,10 @@ class PurchaseController extends Controller
                 $q->where(fn ($w) => $w->where('purchase_no', 'like', $t)->orWhere('supplier_invoice_no', 'like', $t)
                     ->orWhereHas('supplier', fn ($s) => $s->where('name', 'like', $t)));
             })
-            ->when($request->filled('supplier_id'), fn ($q) => $q->where('supplier_ledger_id', $request->supplier_id))
+            ->when(
+                $request->filled('supplier_id') || $request->filled('ledger_id'),
+                fn ($q) => $q->where('supplier_ledger_id', (int) $request->input('supplier_id', $request->input('ledger_id')))
+            )
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->orderByDesc('purchase_date')->orderByDesc('id');
     }
