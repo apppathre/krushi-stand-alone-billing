@@ -33,6 +33,11 @@
                     </td>
                     <td class="num whitespace-nowrap">
                         <a href="{{ route('purchases.show', $p) }}" class="btn-secondary btn-sm">{{ __('Open') }}</a>
+                        @can('menu', ['purchases', 'edit'])
+                            @if ($p->isEditable())
+                                <a href="{{ route('purchases.edit', $p) }}" class="btn-secondary btn-sm">{{ __('Edit') }}</a>
+                            @endif
+                        @endcan
                         <a href="{{ route('purchases.pdf', $p) }}" target="_blank" class="btn-secondary btn-sm">{{ __('Print') }}</a>
                         @can('menu', ['purchases', 'delete'])
                             @unless ($p->isCancelled())

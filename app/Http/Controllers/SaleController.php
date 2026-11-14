@@ -33,12 +33,24 @@ class SaleController extends Controller
     public function index(Request $request, ProductCatalog $catalog)
     {
         $godownId = WorkContext::placeId($request);
-        $walkInId = (int) (AccountMap::current()->walk_in_ledger_id ?: 0);
         $voucherDate = old('invoice_date', app(FinancialYearService::class)->defaultVoucherDate());
 
+        return view('sales.index', $this->deskPayload($request, $catalog, [
+            'placeId' => $godownId,
+            'voucherDate' => $voucherDate,
+            'editing' => null,
+            'editItems' => [],
+        ]));
+    }
+
+    /** @param  array<string, mixed>  $extra */
+    private function deskPayload(Request $request, ProductCatalog $catalog, array $extra): array
+    {
+        $walkInId = (int) (AccountMap::current()->walk_in_ledger_id ?: 0);
+        $voucherDate = $extra['voucherDate'] ?? app(FinancialYearService::class)->defaultVoucherDate();
         $placeIds = $request->user()->accessibleGodownIds();
 
-        return view('sales.index', [
+        return array_merge([
             'clients' => $this->saleClients($walkInId),
             'walkInId' => $walkInId,
             'products' => $catalog->forSale($placeIds),
@@ -46,13 +58,11 @@ class SaleController extends Controller
             'companyState' => CompanyProfile::current()->state_code,
             'defaultCreditDays' => (int) (CompanyProfile::current()->default_credit_days ?? 30),
             'places' => $request->user()->accessibleGodowns(),
-            'placeId' => $godownId,
             'gstRates' => GstSlab::where('is_active', true)->orderBy('sort_order')->orderBy('rate')->pluck('rate')
                 ->map(fn ($r) => (float) $r)->unique()->values()->all() ?: [0, 5, 12, 18, 28],
             'numberFormats' => $this->numbers->formatsFor('sale', $voucherDate),
             'defaultTerms' => TermsHtml::fromCompany(CompanyProfile::current()->invoice_terms),
-            'voucherDate' => $voucherDate,
-        ]);
+        ], $extra);
     }
 
     /** Wide drawer / AJAX browser for recent invoices. */
@@ -102,7 +112,72 @@ class SaleController extends Controller
         return redirect()->route('sales.index', $request->only('godown_id'));
     }
 
+    public function edit(Request $request, Sale $sale, ProductCatalog $catalog)
+    {
+        abort_unless($request->user()->canMenu('sales', 'edit'), 403);
+        $this->authorizeGodown($request, $sale->godown_id);
+        abort_unless($sale->isEditable(), 403, __('This invoice cannot be edited.'));
+
+        $sale->load(['items.product.unit', 'items.batch', 'client']);
+        $editItems = $sale->items->map(fn ($i) => [
+            'godown_id' => (string) ($i->godown_id ?: $sale->godown_id),
+            'product_id' => (string) $i->product_id,
+            'batch_id' => (string) ($i->batch_id ?: ''),
+            'qty' => (string) $i->qty,
+            'rate' => (float) $i->rate,
+            'discount_pct' => (float) $i->discount_pct,
+            'gst_rate' => (float) $i->gst_rate,
+        ])->all();
+
+        return view('sales.index', $this->deskPayload($request, $catalog, [
+            'placeId' => (int) $sale->godown_id,
+            'voucherDate' => $sale->invoice_date->toDateString(),
+            'editing' => $sale,
+            'editItems' => $editItems,
+            'defaultTerms' => $sale->terms ?: TermsHtml::fromCompany(CompanyProfile::current()->invoice_terms),
+        ]));
+    }
+
     public function store(Request $request): RedirectResponse
+    {
+        $data = $this->validatedSale($request);
+        $afterSave = $data['after_save'] ?? 'show';
+        unset($data['after_save']);
+
+        try {
+            $sale = $this->sales->create($data + ['customer_name' => null], $request->user()->id);
+        } catch (\RuntimeException $e) {
+            return back()->withInput()->withErrors(['items' => $e->getMessage()]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withInput()->withErrors($e->errors());
+        }
+
+        return $this->afterSaleSave($sale, $afterSave);
+    }
+
+    public function update(Request $request, Sale $sale): RedirectResponse
+    {
+        abort_unless($request->user()->canMenu('sales', 'edit'), 403);
+        $this->authorizeGodown($request, $sale->godown_id);
+        abort_unless($sale->isEditable(), 403, __('This invoice cannot be edited.'));
+
+        $data = $this->validatedSale($request, forUpdate: true);
+        $afterSave = $data['after_save'] ?? 'show';
+        unset($data['after_save'], $data['document_series_id']);
+
+        try {
+            $sale = $this->sales->update($sale, $data + ['customer_name' => null], $request->user()->id);
+        } catch (\RuntimeException $e) {
+            return back()->withInput()->withErrors(['items' => $e->getMessage()]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withInput()->withErrors($e->errors());
+        }
+
+        return $this->afterSaleSave($sale, $afterSave, updated: true);
+    }
+
+    /** @return array<string, mixed> */
+    private function validatedSale(Request $request, bool $forUpdate = false): array
     {
         $walkInId = (int) (AccountMap::current()->walk_in_ledger_id ?: 0);
         $data = $request->validate([
@@ -153,23 +228,24 @@ class SaleController extends Controller
         $godownId = (int) $data['godown_id'];
         $this->authorizeGodown($request, $godownId);
         foreach ($data['items'] as $row) {
-            $linePlace = (int) ($row['godown_id'] ?? $godownId);
-            $this->authorizeGodown($request, $linePlace);
+            $this->authorizeGodown($request, (int) ($row['godown_id'] ?? $godownId));
         }
         $request->session()->put('godown_id', $godownId);
+        $data['godown_id'] = $godownId;
 
-        $afterSave = $data['after_save'] ?? 'show';
-        unset($data['after_save']);
-
-        try {
-            $sale = $this->sales->create($data + ['godown_id' => $godownId, 'customer_name' => null], $request->user()->id);
-        } catch (\RuntimeException $e) {
-            return back()->withInput()->withErrors(['items' => $e->getMessage()]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return back()->withInput()->withErrors($e->errors());
+        if ($forUpdate) {
+            unset($data['document_series_id']);
         }
 
-        $status = __('Invoice :no saved successfully.', ['no' => $sale->invoice_no]);
+        return $data;
+    }
+
+    private function afterSaleSave(Sale $sale, string $afterSave, bool $updated = false): RedirectResponse
+    {
+        $status = $updated
+            ? __('Invoice :no updated successfully.', ['no' => $sale->invoice_no])
+            : __('Invoice :no saved successfully.', ['no' => $sale->invoice_no]);
+
         if ($afterSave === 'print') {
             $company = CompanyProfile::current();
             $format = PrintFormats::defaultSaleFormat($company);

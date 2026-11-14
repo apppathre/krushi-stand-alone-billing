@@ -26,6 +26,11 @@
                     <td><x-sale-status :sale="$s" /></td>
                     <td class="num whitespace-nowrap">
                         <a href="{{ route('sales.show', $s) }}" class="btn-secondary btn-sm">{{ __('Open') }}</a>
+                        @can('menu', ['sales', 'edit'])
+                            @if ($s->isEditable())
+                                <a href="{{ route('sales.edit', $s) }}" class="btn-secondary btn-sm">{{ __('Edit') }}</a>
+                            @endif
+                        @endcan
                         <a href="{{ route('sales.pdf', $s) }}" target="_blank" class="btn-secondary btn-sm">PDF</a>
                         @can('menu', ['sales', 'delete'])
                             @unless ($s->isCancelled())

@@ -148,6 +148,8 @@ Route::middleware('auth')->group(function () {
         Route::get('browse', [PurchaseController::class, 'browse'])->name('browse');
         Route::get('create', [PurchaseController::class, 'create'])->name('create');
         Route::post('/', [PurchaseController::class, 'store'])->name('store');
+        Route::get('{purchase}/edit', [PurchaseController::class, 'edit'])->middleware('menu:purchases,edit')->name('edit');
+        Route::put('{purchase}', [PurchaseController::class, 'update'])->middleware('menu:purchases,edit')->name('update');
         Route::get('{purchase}', [PurchaseController::class, 'show'])->name('show');
         Route::get('{purchase}/details', [PurchaseController::class, 'details'])->name('details');
         Route::get('{purchase}/pdf', [PurchaseController::class, 'pdf'])->name('pdf');
@@ -169,6 +171,8 @@ Route::middleware('auth')->group(function () {
         Route::get('browse', [SaleController::class, 'browse'])->name('browse');
         Route::get('create', [SaleController::class, 'create'])->name('create');
         Route::post('/', [SaleController::class, 'store'])->name('store');
+        Route::get('{sale}/edit', [SaleController::class, 'edit'])->middleware('menu:sales,edit')->name('edit');
+        Route::put('{sale}', [SaleController::class, 'update'])->middleware('menu:sales,edit')->name('update');
         Route::get('{sale}', [SaleController::class, 'show'])->name('show');
         Route::get('{sale}/details', [SaleController::class, 'details'])->name('details');
         Route::get('{sale}/pdf', [SaleController::class, 'pdf'])->name('pdf');

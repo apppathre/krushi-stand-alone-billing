@@ -15,6 +15,11 @@
         <div class="bill-summary__bar no-print">
             <a href="{{ route('sales.index') }}" class="btn-secondary btn-sm">&larr; {{ __('Back') }}</a>
             <div class="bill-summary__bar-actions">
+                @can('menu', ['sales', 'edit'])
+                    @if ($sale->isEditable())
+                        <a href="{{ route('sales.edit', $sale) }}" class="btn-secondary btn-sm">{{ __('Edit') }}</a>
+                    @endif
+                @endcan
                 @include('partials.invoice-print-menu', ['sale' => $sale])
                 <a href="{{ route('sales.details', $sale) }}" class="btn-secondary btn-sm">{{ __('Full details') }}</a>
             </div>

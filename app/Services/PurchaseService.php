@@ -262,6 +262,173 @@ class PurchaseService
     }
 
     /**
+     * Posted edit: reverse stock + money, replace lines, re-post (same purchase number).
+     * Existing payments are wiped and recreated from the form settlement.
+     */
+    public function update(Purchase $purchase, array $data, ?int $userId = null): Purchase
+    {
+        return DB::transaction(function () use ($purchase, $data, $userId) {
+            $purchase = Purchase::lockForUpdate()->findOrFail($purchase->id);
+            if ($purchase->isCancelled()) {
+                throw ValidationException::withMessages(['purchase' => __('Cancelled purchase cannot be edited.')]);
+            }
+            if ($purchase->returns()->exists()) {
+                throw ValidationException::withMessages([
+                    'purchase' => __('Cannot edit a purchase that has debit notes / returns.'),
+                ]);
+            }
+
+            $company = CompanyProfile::current();
+            $supplier = Ledger::findOrFail($data['supplier_ledger_id']);
+            $supplyState = ($data['supply_state_code'] ?? null) ?: ($supplier->state_code ?: $company->state_code);
+            $inter = $this->gst->isInterState($company->state_code, $supplyState);
+
+            $headerPlace = (int) $data['godown_id'];
+            $products = Product::findMany(collect($data['items'])->pluck('product_id'))->keyBy('id');
+            $placeIds = collect($data['items'])
+                ->map(fn ($row) => (int) ($row['godown_id'] ?? $headerPlace))
+                ->push($headerPlace)
+                ->unique()
+                ->values()
+                ->all();
+            $defaultRacks = app(ProductCatalog::class)->defaultRackByPlace($placeIds);
+            $items = [];
+            foreach ($data['items'] as $row) {
+                $p = $products[$row['product_id']];
+                $gst = array_key_exists('gst_rate', $row) && $row['gst_rate'] !== null && $row['gst_rate'] !== ''
+                    ? (float) $row['gst_rate']
+                    : (float) $p->gst_rate;
+                $linePlace = (int) ($row['godown_id'] ?? $headerPlace);
+                $rackId = filled($row['rack_id'] ?? null)
+                    ? (int) $row['rack_id']
+                    : ($defaultRacks[$linePlace] ?? null);
+                $items[] = [
+                    'product_id' => $p->id,
+                    'godown_id' => $linePlace,
+                    'rack_id' => $rackId,
+                    'batch_no' => $row['batch_no'] ?? null,
+                    'mfg_date' => $row['mfg_date'] ?? null,
+                    'expiry_date' => $row['expiry_date'] ?? null,
+                    'hsn_code' => $p->hsn_code,
+                    'qty' => (float) $row['qty'],
+                    'rate' => (float) $row['rate'],
+                    'mrp' => (float) ($row['mrp'] ?? 0),
+                    'discount_pct' => (float) ($row['discount_pct'] ?? 0),
+                    'gst_rate' => $gst,
+                    'batch_required' => $p->batch_required,
+                ];
+                if ($p->batch_required && blank($row['batch_no'] ?? null)) {
+                    throw ValidationException::withMessages(['items' => __('Batch number is required for :product.', ['product' => $p->display_name])]);
+                }
+                if ($rackId && ! Rack::where('id', $rackId)->where('godown_id', $linePlace)->where('is_active', true)->exists()) {
+                    throw ValidationException::withMessages(['items' => __('Rack must belong to the selected place for :product.', ['product' => $p->display_name])]);
+                }
+            }
+            $calc = $this->gst->calculate($items, $inter);
+            $calc['totals'] = $this->gst->applyBillCharges(
+                $calc['totals'],
+                (float) ($data['freight_amount'] ?? 0),
+                (float) ($data['hammali_amount'] ?? 0),
+                (float) ($data['cash_discount'] ?? 0),
+            );
+
+            $settlement = ($data['settlement_type'] ?? null) === 'cash' ? 'cash' : 'credit';
+            [$creditDays, $dueDate] = $settlement === 'credit'
+                ? $this->resolveCreditTerms($data, $supplier, $company, (string) $data['purchase_date'])
+                : [null, null];
+
+            $newDate = (string) $data['purchase_date'];
+            $this->stock->reverse('purchase', $purchase->id, $newDate);
+            $this->poster->unpost('purchase', $purchase->id);
+            foreach ($purchase->payments()->lockForUpdate()->get() as $payment) {
+                $this->poster->unpost('purchase_payment', $payment->id);
+                $payment->delete();
+            }
+            $purchase->items()->delete();
+
+            $purchase->update($calc['totals'] + [
+                'financial_year_id' => FinancialYear::forDate($newDate)->id,
+                'purchase_date' => $newDate,
+                'supplier_invoice_no' => $data['supplier_invoice_no'] ?? null,
+                'supplier_invoice_date' => $data['supplier_invoice_date'] ?? null,
+                'godown_id' => $headerPlace,
+                'supplier_ledger_id' => $supplier->id,
+                'supply_state_code' => $supplyState,
+                'is_igst' => $inter,
+                'notes' => $data['notes'] ?? null,
+                'credit_days' => $creditDays,
+                'due_date' => $dueDate,
+                'terms' => TermsHtml::sanitize($data['terms'] ?? null)
+                    ?: TermsHtml::fromCompany($company->invoice_terms),
+                'settlement_type' => $settlement,
+                'paid_amount' => 0,
+                'status' => 'active',
+                'user_id' => $userId ?? $purchase->user_id,
+            ]);
+
+            foreach ($calc['lines'] as $line) {
+                $linePlace = (int) ($line['godown_id'] ?? $purchase->godown_id);
+                $netRate = $line['qty'] > 0 ? round($line['taxable_amount'] / $line['qty'], 2) : $line['rate'];
+                $batch = $this->stock->receive([
+                    'product_id' => $line['product_id'],
+                    'godown_id' => $linePlace,
+                    'rack_id' => $line['rack_id'] ?? null,
+                    'batch_no' => $line['batch_no'],
+                    'mfg_date' => $line['mfg_date'],
+                    'expiry_date' => $line['expiry_date'],
+                    'qty' => $line['qty'],
+                    'rate' => $netRate,
+                    'mrp' => $line['mrp'],
+                    'type' => 'purchase',
+                    'ref_type' => 'purchase',
+                    'ref_id' => $purchase->id,
+                    'date' => $purchase->purchase_date,
+                    'narration' => $purchase->purchase_no,
+                ]);
+
+                $purchase->items()->create([
+                    'godown_id' => $linePlace,
+                    'product_id' => $line['product_id'],
+                    'batch_id' => $batch->id,
+                    'rack_id' => $batch->rack_id,
+                    'batch_no' => $batch->batch_no,
+                    'mfg_date' => $line['mfg_date'],
+                    'expiry_date' => $line['expiry_date'],
+                    'hsn_code' => $line['hsn_code'],
+                    'qty' => $line['qty'],
+                    'rate' => $line['rate'],
+                    'mrp' => $line['mrp'],
+                    'discount_pct' => $line['discount_pct'],
+                    'discount_amount' => $line['discount_amount'],
+                    'taxable_amount' => $line['taxable_amount'],
+                    'gst_rate' => $line['gst_rate'],
+                    'cgst_amount' => $line['cgst_amount'],
+                    'sgst_amount' => $line['sgst_amount'],
+                    'igst_amount' => $line['igst_amount'],
+                    'line_total' => $line['line_total'],
+                ]);
+            }
+
+            $this->poster->postPurchase($purchase->fresh());
+
+            $paid = $settlement === 'cash'
+                ? min((float) ($data['paid_amount'] ?? 0), (float) $purchase->fresh()->grand_total)
+                : 0.0;
+            if ($paid > 0) {
+                $this->addPayment($purchase->fresh(), [
+                    'amount' => $paid,
+                    'ledger_id' => $data['payment_ledger_id'] ?? $data['ledger_id'] ?? null,
+                    'mode' => $data['payment_mode'] ?? 'cash',
+                    'payment_date' => $newDate,
+                    'reference' => $data['payment_reference'] ?? null,
+                ]);
+            }
+
+            return $purchase->fresh(['items.product', 'supplier', 'godown']);
+        });
+    }
+
+    /**
      * Debit note / purchase return against a bill. $lines: [purchase_item_id => qty].
      */
     public function createReturn(Purchase $purchase, array $lines, string $date, ?string $reason, ?int $userId = null, ?int $seriesId = null): PurchaseReturn

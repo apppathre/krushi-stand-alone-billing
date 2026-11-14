@@ -70,4 +70,10 @@ class Purchase extends Model
     {
         return $this->status === 'cancelled';
     }
+
+    /** Active bill with no debit notes — safe to amend (stock reverse + repost). */
+    public function isEditable(): bool
+    {
+        return ! $this->isCancelled() && ! $this->returns()->exists();
+    }
 }

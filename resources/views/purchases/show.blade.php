@@ -13,6 +13,11 @@
         <div class="bill-summary__bar no-print">
             <a href="{{ route('purchases.index') }}" class="btn-secondary btn-sm">&larr; {{ __('Back') }}</a>
             <div class="bill-summary__bar-actions">
+                @can('menu', ['purchases', 'edit'])
+                    @if ($purchase->isEditable())
+                        <a href="{{ route('purchases.edit', $purchase) }}" class="btn-secondary btn-sm">{{ __('Edit') }}</a>
+                    @endif
+                @endcan
                 <a href="{{ route('purchases.pdf', $purchase) }}" target="_blank" class="btn-accent btn-sm">{{ __('Print PDF') }}</a>
                 <a href="{{ route('purchases.print', [$purchase, 'autoprint' => 1]) }}" target="_blank" class="btn-secondary btn-sm">{{ __('Print') }}</a>
                 <a href="{{ route('purchases.details', $purchase) }}" class="btn-secondary btn-sm">{{ __('Full details') }}</a>

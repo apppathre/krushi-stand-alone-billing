@@ -261,6 +261,161 @@ class SaleService
     }
 
     /**
+     * Posted edit: reverse stock + money, replace lines, re-post (same invoice number).
+     * Existing receipts are wiped and recreated from the form settlement.
+     */
+    public function update(Sale $sale, array $data, ?int $userId = null): Sale
+    {
+        return DB::transaction(function () use ($sale, $data, $userId) {
+            $sale = Sale::lockForUpdate()->findOrFail($sale->id);
+            if ($sale->isCancelled()) {
+                throw ValidationException::withMessages(['sale' => __('Cancelled invoice cannot be edited.')]);
+            }
+            if ($sale->returns()->exists()) {
+                throw ValidationException::withMessages(['sale' => __('Cannot edit an invoice that has credit notes.')]);
+            }
+
+            $company = CompanyProfile::current();
+            $map = AccountMap::current();
+
+            if (empty($data['client_ledger_id'])) {
+                throw new \RuntimeException(__('Select a customer ledger. Walk-in is not allowed.'));
+            }
+            $client = Ledger::findOrFail($data['client_ledger_id']);
+            $walkInId = (int) ($map->walk_in_ledger_id ?: 0);
+            if ($walkInId > 0 && (int) $client->id === $walkInId) {
+                throw new \RuntimeException(__('Select a customer ledger. Walk-in is not allowed.'));
+            }
+            $supplyState = ($data['supply_state_code'] ?? null) ?: ($client->state_code ?: $company->state_code);
+            $inter = $this->gst->isInterState($company->state_code, $supplyState);
+
+            $headerPlace = (int) $data['godown_id'];
+            $products = Product::findMany(collect($data['items'])->pluck('product_id'))->keyBy('id');
+            $items = [];
+            foreach ($data['items'] as $row) {
+                $p = $products[$row['product_id']];
+                $gst = array_key_exists('gst_rate', $row) && $row['gst_rate'] !== null && $row['gst_rate'] !== ''
+                    ? (float) $row['gst_rate']
+                    : (float) $p->gst_rate;
+                $items[] = [
+                    'product_id' => $p->id,
+                    'batch_id' => $row['batch_id'] ?? null,
+                    'godown_id' => (int) ($row['godown_id'] ?? $headerPlace),
+                    'hsn_code' => $p->hsn_code,
+                    'qty' => (float) $row['qty'],
+                    'rate' => (float) $row['rate'],
+                    'discount_pct' => (float) ($row['discount_pct'] ?? 0),
+                    'gst_rate' => $gst,
+                ];
+            }
+            $calc = $this->gst->calculate($items, $inter);
+            $calc['totals'] = $this->gst->applyBillCharges(
+                $calc['totals'],
+                (float) ($data['freight_amount'] ?? 0),
+                (float) ($data['hammali_amount'] ?? 0),
+                (float) ($data['cash_discount'] ?? 0),
+            );
+            [$creditDays, $dueDate] = $this->resolveCreditTerms(
+                $data,
+                $client,
+                $company,
+                (string) $data['invoice_date'],
+            );
+
+            $newDate = (string) $data['invoice_date'];
+            $this->stock->reverse('sale', $sale->id, $newDate);
+            $this->poster->unpost('sale', $sale->id);
+            $this->poster->unpost('sale_commission', $sale->id);
+            foreach ($sale->payments()->lockForUpdate()->get() as $payment) {
+                $this->poster->unpost('sale_receipt', $payment->id);
+                $payment->delete();
+            }
+            $sale->items()->delete();
+
+            $paidNow = min((float) ($data['paid_amount'] ?? 0), (float) $calc['totals']['grand_total']);
+            $this->assertCreditLimit($company, $client, (float) $calc['totals']['grand_total'] - $paidNow);
+
+            $salespersonId = $client->salesperson_user_id ? (int) $client->salesperson_user_id : null;
+            $commissionPct = null;
+            $commissionAmt = 0.0;
+            if ($company->commission_enabled && $salespersonId) {
+                $commissionPct = filled($client->commission_pct) ? (float) $client->commission_pct : (float) ($company->default_commission_pct ?? 0);
+                if ($commissionPct > 0) {
+                    $commissionAmt = round((float) $calc['totals']['taxable_total'] * $commissionPct / 100, 2);
+                }
+            }
+
+            $sale->update($calc['totals'] + [
+                'financial_year_id' => \App\Models\FinancialYear::forDate($newDate)->id,
+                'invoice_date' => $newDate,
+                'godown_id' => $headerPlace,
+                'client_ledger_id' => $client->id,
+                'customer_name' => $data['customer_name'] ?? null,
+                'customer_phone' => $data['customer_phone'] ?? null,
+                'supply_state_code' => $supplyState,
+                'is_igst' => $inter,
+                'notes' => $data['notes'] ?? null,
+                'credit_days' => $creditDays,
+                'due_date' => $dueDate,
+                'terms' => TermsHtml::sanitize($data['terms'] ?? null)
+                    ?: TermsHtml::fromCompany($company->invoice_terms),
+                'status' => 'active',
+                'paid_amount' => 0,
+                'user_id' => $userId ?? $sale->user_id,
+                'salesperson_user_id' => $salespersonId,
+                'commission_pct' => $commissionPct,
+                'commission_amount' => $commissionAmt,
+            ]);
+
+            foreach ($calc['lines'] as $line) {
+                $linePlace = (int) ($line['godown_id'] ?? $sale->godown_id);
+                $alloc = $this->stock->issue(
+                    $line['product_id'], $linePlace, $line['qty'], $line['batch_id'],
+                    'sale', 'sale', $sale->id, $sale->invoice_date, $sale->invoice_no,
+                );
+                $cost = round(collect($alloc)->sum(fn ($a) => $a['qty'] * $a['rate']) / max($line['qty'], 0.001), 2);
+
+                $sale->items()->create([
+                    'godown_id' => $linePlace,
+                    'product_id' => $line['product_id'],
+                    'batch_id' => $alloc[0]['batch_id'],
+                    'hsn_code' => $line['hsn_code'],
+                    'qty' => $line['qty'],
+                    'rate' => $line['rate'],
+                    'cost_rate' => $cost,
+                    'discount_pct' => $line['discount_pct'],
+                    'discount_amount' => $line['discount_amount'],
+                    'taxable_amount' => $line['taxable_amount'],
+                    'gst_rate' => $line['gst_rate'],
+                    'cgst_amount' => $line['cgst_amount'],
+                    'sgst_amount' => $line['sgst_amount'],
+                    'igst_amount' => $line['igst_amount'],
+                    'line_total' => $line['line_total'],
+                ]);
+            }
+
+            $sale = $sale->fresh();
+            $this->poster->postSale($sale);
+            if ($commissionAmt > 0.005) {
+                $this->poster->postSaleCommission($sale, $commissionAmt);
+            }
+
+            $paid = min((float) ($data['paid_amount'] ?? 0), (float) $sale->grand_total);
+            if ($paid > 0) {
+                $this->addPayment($sale, [
+                    'amount' => $paid,
+                    'ledger_id' => $data['payment_ledger_id'] ?? $data['ledger_id'] ?? null,
+                    'mode' => $data['payment_mode'] ?? 'cash',
+                    'payment_date' => $newDate,
+                    'reference' => $data['payment_reference'] ?? null,
+                ], $userId);
+            }
+
+            return $sale->fresh(['items.product', 'client', 'godown']);
+        });
+    }
+
+    /**
      * Credit note for returned goods. $lines: [sale_item_id => qty].
      */
     public function createReturn(Sale $sale, array $lines, string $date, ?string $reason, ?int $userId = null, ?int $seriesId = null): SaleReturn

@@ -66,20 +66,8 @@ class PurchaseController extends Controller
             }
         }
 
-        return view('purchases.index', [
-            'suppliers' => Ledger::suppliers()->where('is_active', true)->orderBy('name')
-                ->get(['id', 'name', 'name_mr', 'state_code', 'phone', 'credit_days']),
-            'products' => $catalog->forPurchase(),
-            'racksByPlace' => $catalog->racksByPlace($request->user()->accessibleGodownIds()),
-            'states' => IndianStates::options(),
-            'companyState' => CompanyProfile::current()->state_code,
-            'defaultCreditDays' => (int) (CompanyProfile::current()->default_credit_days ?? 30),
-            'places' => $places,
+        return view('purchases.index', $this->deskPayload($request, $catalog, [
             'placeId' => $placeId,
-            'gstRates' => GstSlab::where('is_active', true)->orderBy('sort_order')->orderBy('rate')->pluck('rate')
-                ->map(fn ($r) => (float) $r)->unique()->values()->all() ?: [0, 5, 12, 18, 28],
-            'numberFormats' => $this->numbers->formatsFor('purchase', $voucherDate),
-            'defaultTerms' => TermsHtml::fromCompany(CompanyProfile::current()->invoice_terms),
             'voucherDate' => $voucherDate,
             'fromOrder' => $fromOrder,
             'prefillItems' => $prefillItems,
@@ -87,7 +75,30 @@ class PurchaseController extends Controller
             'prefillState' => $prefillState ?: CompanyProfile::current()->state_code,
             'settlement' => $settlement,
             'paid' => $paid,
-        ]);
+            'editing' => null,
+            'editItems' => [],
+        ]));
+    }
+
+    /** @param  array<string, mixed>  $extra */
+    private function deskPayload(Request $request, ProductCatalog $catalog, array $extra): array
+    {
+        $voucherDate = $extra['voucherDate'] ?? app(FinancialYearService::class)->defaultVoucherDate();
+
+        return array_merge([
+            'suppliers' => Ledger::suppliers()->where('is_active', true)->orderBy('name')
+                ->get(['id', 'name', 'name_mr', 'state_code', 'phone', 'credit_days']),
+            'products' => $catalog->forPurchase(),
+            'racksByPlace' => $catalog->racksByPlace($request->user()->accessibleGodownIds()),
+            'states' => IndianStates::options(),
+            'companyState' => CompanyProfile::current()->state_code,
+            'defaultCreditDays' => (int) (CompanyProfile::current()->default_credit_days ?? 30),
+            'places' => $request->user()->accessibleGodowns(),
+            'gstRates' => GstSlab::where('is_active', true)->orderBy('sort_order')->orderBy('rate')->pluck('rate')
+                ->map(fn ($r) => (float) $r)->unique()->values()->all() ?: [0, 5, 12, 18, 28],
+            'numberFormats' => $this->numbers->formatsFor('purchase', $voucherDate),
+            'defaultTerms' => TermsHtml::fromCompany(CompanyProfile::current()->invoice_terms),
+        ], $extra);
     }
 
     /** Wide drawer / AJAX browser for recent purchases. */
@@ -136,7 +147,82 @@ class PurchaseController extends Controller
         return redirect()->route('purchases.index', $request->only('godown_id'));
     }
 
+    public function edit(Request $request, Purchase $purchase, ProductCatalog $catalog)
+    {
+        abort_unless($request->user()->canMenu('purchases', 'edit'), 403);
+        $this->authorizeGodown($request, $purchase->godown_id);
+        abort_unless($purchase->isEditable(), 403, __('This purchase cannot be edited.'));
+
+        $purchase->load(['items.product.unit', 'items.batch', 'supplier']);
+        $editItems = $purchase->items->map(fn ($i) => [
+            'godown_id' => (string) ($i->godown_id ?: $purchase->godown_id),
+            'rack_id' => (string) ($i->rack_id ?: ''),
+            'product_id' => (string) $i->product_id,
+            'qty' => (string) $i->qty,
+            'rate' => (float) $i->rate,
+            'mrp' => (float) $i->mrp,
+            'discount_pct' => (float) $i->discount_pct,
+            'gst_rate' => (float) $i->gst_rate,
+            'batch_no' => (string) ($i->batch_no ?: $i->batch?->batch_no ?: ''),
+            'mfg_date' => optional($i->mfg_date)->toDateString() ?: '',
+            'expiry_date' => optional($i->expiry_date)->toDateString() ?: '',
+        ])->all();
+
+        return view('purchases.index', $this->deskPayload($request, $catalog, [
+            'placeId' => (int) $purchase->godown_id,
+            'voucherDate' => $purchase->purchase_date->toDateString(),
+            'fromOrder' => null,
+            'prefillItems' => $editItems,
+            'prefillSupplier' => (string) $purchase->supplier_ledger_id,
+            'prefillState' => $purchase->supply_state_code ?: CompanyProfile::current()->state_code,
+            'settlement' => $purchase->settlement_type ?: (((float) $purchase->paid_amount > 0) ? 'cash' : 'credit'),
+            'paid' => (float) $purchase->paid_amount,
+            'editing' => $purchase,
+            'editItems' => $editItems,
+            'defaultTerms' => $purchase->terms ?: TermsHtml::fromCompany(CompanyProfile::current()->invoice_terms),
+        ]));
+    }
+
     public function store(Request $request): RedirectResponse
+    {
+        $data = $this->validatedPurchase($request);
+        $afterSave = $data['after_save'] ?? 'show';
+        unset($data['after_save']);
+
+        try {
+            $purchase = $this->purchases->create($data, $request->user()->id);
+        } catch (\RuntimeException $e) {
+            return back()->withInput()->withErrors(['items' => $e->getMessage()]);
+        } catch (ValidationException $e) {
+            return back()->withInput()->withErrors($e->errors());
+        }
+
+        return $this->afterPurchaseSave($purchase, $afterSave);
+    }
+
+    public function update(Request $request, Purchase $purchase): RedirectResponse
+    {
+        abort_unless($request->user()->canMenu('purchases', 'edit'), 403);
+        $this->authorizeGodown($request, $purchase->godown_id);
+        abort_unless($purchase->isEditable(), 403, __('This purchase cannot be edited.'));
+
+        $data = $this->validatedPurchase($request, forUpdate: true);
+        $afterSave = $data['after_save'] ?? 'show';
+        unset($data['after_save'], $data['purchase_order_id'], $data['document_series_id']);
+
+        try {
+            $purchase = $this->purchases->update($purchase, $data, $request->user()->id);
+        } catch (\RuntimeException $e) {
+            return back()->withInput()->withErrors(['items' => $e->getMessage()]);
+        } catch (ValidationException $e) {
+            return back()->withInput()->withErrors($e->errors());
+        }
+
+        return $this->afterPurchaseSave($purchase, $afterSave, updated: true);
+    }
+
+    /** @return array<string, mixed> */
+    private function validatedPurchase(Request $request, bool $forUpdate = false): array
     {
         $data = $request->validate([
             'purchase_date' => ['required', 'date'],
@@ -172,10 +258,7 @@ class PurchaseController extends Controller
             'purchase_order_id' => ['nullable', 'integer', 'exists:purchase_orders,id'],
             'after_save' => ['nullable', 'in:show,print'],
         ]);
-        $afterSave = $data['after_save'] ?? 'show';
-        unset($data['after_save']);
 
-        // Infer settlement when older clients omit it: paid > 0 ⇒ cash, else credit.
         $settlement = $data['settlement_type']
             ?? (((float) ($data['paid_amount'] ?? 0) > 0) ? 'cash' : 'credit');
         $data['settlement_type'] = $settlement;
@@ -202,16 +285,21 @@ class PurchaseController extends Controller
             $this->authorizeGodown($request, (int) ($row['godown_id'] ?? $godownId));
         }
         $request->session()->put('godown_id', $godownId);
+        $data['godown_id'] = $godownId;
 
-        try {
-            $purchase = $this->purchases->create($data + ['godown_id' => $godownId], $request->user()->id);
-        } catch (\RuntimeException $e) {
-            return back()->withInput()->withErrors(['items' => $e->getMessage()]);
-        } catch (ValidationException $e) {
-            return back()->withInput()->withErrors($e->errors());
+        if ($forUpdate) {
+            unset($data['purchase_order_id'], $data['document_series_id']);
         }
 
-        $status = __('Purchase :no saved successfully.', ['no' => $purchase->purchase_no]);
+        return $data;
+    }
+
+    private function afterPurchaseSave(Purchase $purchase, string $afterSave, bool $updated = false): RedirectResponse
+    {
+        $status = $updated
+            ? __('Purchase :no updated successfully.', ['no' => $purchase->purchase_no])
+            : __('Purchase :no saved successfully.', ['no' => $purchase->purchase_no]);
+
         if ($afterSave === 'print') {
             $company = CompanyProfile::current();
             $lang = PrintFormats::defaultSaleLang($company);

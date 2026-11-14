@@ -88,4 +88,10 @@ class Sale extends Model
     {
         return $this->status === 'cancelled';
     }
+
+    /** Active invoice with no credit notes — safe to amend (stock reverse + repost). */
+    public function isEditable(): bool
+    {
+        return ! $this->isCancelled() && ! $this->returns()->exists();
+    }
 }

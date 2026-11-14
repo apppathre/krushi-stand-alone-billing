@@ -6,6 +6,11 @@
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2 no-print">
         <a href="{{ route('sales.show', $sale) }}" class="btn-secondary btn-sm">&larr; {{ __('Summary') }}</a>
         <div class="flex flex-wrap gap-2">
+            @can('menu', ['sales', 'edit'])
+                @if ($sale->isEditable())
+                    <a href="{{ route('sales.edit', $sale) }}" class="btn-secondary btn-sm">{{ __('Edit') }}</a>
+                @endif
+            @endcan
             @include('partials.invoice-print-menu', ['sale' => $sale])
             @can('menu', ['sale_returns', 'add'])
                 @unless ($sale->isCancelled())

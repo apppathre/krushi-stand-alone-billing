@@ -1,15 +1,31 @@
+@php
+    $isEdit = ! empty($editing);
+    $formItems = old('items', $editItems ?? $prefillItems ?? []);
+    $partyPrefill = $prefillSupplier ?? old('supplier_ledger_id', $editing?->supplier_ledger_id ?? '');
+    $statePrefill = $prefillState ?? old('supply_state_code', $editing?->supply_state_code ?? $companyState);
+    $settlePrefill = old('settlement_type', $settlement ?? ($editing?->settlement_type ?? 'credit'));
+    $paidPrefill = (float) old('paid_amount', $paid ?? ($editing?->paid_amount ?? 0));
+    $termsPrefill = old('terms', $defaultTerms ?? ($editing?->terms ?? ''));
+    $creditDaysBill = old('credit_days', $editing?->credit_days);
+@endphp
 <x-app-layout>
     <x-slot name="header">
-        <h1 class="page-title">{{ __('Purchase') }}</h1>
+        <h1 class="page-title">{{ $isEdit ? __('Amend purchase') : __('Purchase') }}</h1>
     </x-slot>
 
-    <x-page-head class="mb-3" :title="__('New Purchase')" :blurb="__('Enter the bill here. Open recent from the list button.')">
+    <x-page-head class="mb-3"
+                 :title="$isEdit ? __('Amend').' '.$editing->purchase_no : __('New Purchase')"
+                 :blurb="$isEdit ? __('Update lines, supplier, or payment. Number stays the same. Existing payments are replaced from this form.') : __('Enter the bill here. Open recent from the list button.')">
         <x-screen-help topic="purchase" />
-        <a href="{{ route('purchase-orders.index') }}" class="btn-secondary btn-sm">{{ __('Purchase Order') }}</a>
-        <button type="button" class="btn-secondary btn-sm"
-                onclick="KrushiDrawer.open('{{ route('purchases.browse', ['preset' => 'month']) }}', '{{ __('Recent purchases') }}', '80rem')">
-            <x-icon name="list" class="h-4 w-4" /> <span class="page-head__btn-label">{{ __('Recent') }}</span>
-        </button>
+        @if (! $isEdit)
+            <a href="{{ route('purchase-orders.index') }}" class="btn-secondary btn-sm">{{ __('Purchase Order') }}</a>
+            <button type="button" class="btn-secondary btn-sm"
+                    onclick="KrushiDrawer.open('{{ route('purchases.browse', ['preset' => 'month']) }}', '{{ __('Recent purchases') }}', '80rem')">
+                <x-icon name="list" class="h-4 w-4" /> <span class="page-head__btn-label">{{ __('Recent') }}</span>
+            </button>
+        @else
+            <a href="{{ route('purchases.show', $editing) }}" class="btn-secondary btn-sm">{{ __('Cancel edit') }}</a>
+        @endif
     </x-page-head>
 
     @if (! empty($fromOrder))
@@ -19,11 +35,12 @@
         </div>
     @endif
 
-    @can('menu', ['purchases', 'add'])
-        <section class="mb-2" aria-label="{{ __('New Purchase') }}">
-            <form method="POST" action="{{ route('purchases.store') }}"
+    @if ($isEdit || auth()->user()->canMenu('purchases', 'add'))
+        <section class="mb-2" aria-label="{{ $isEdit ? __('Amend purchase') : __('New Purchase') }}">
+            <form method="POST"
+                  action="{{ $isEdit ? route('purchases.update', $editing) : route('purchases.store') }}"
                   class="txn-desk space-y-4"
-                  data-busy-label="{{ __('Saving purchase…') }}"
+                  data-busy-label="{{ $isEdit ? __('Updating purchase…') : __('Saving purchase…') }}"
                   x-data="invoiceForm({
                       mode: 'purchase',
                       products: @js($products),
@@ -36,15 +53,15 @@
                       defaultCreditDays: {{ (int) ($defaultCreditDays ?? 30) }},
                       voucherDate: '{{ old('purchase_date', $voucherDate ?? now()->toDateString()) }}',
                       companyState: '{{ $companyState }}',
-                      partyId: '{{ $prefillSupplier ?? old('supplier_ledger_id', '') }}',
-                      supplyState: '{{ $prefillState ?? old('supply_state_code', $companyState) }}',
-                      settlement: '{{ $settlement ?? 'credit' }}',
-                      creditDaysBill: {{ old('credit_days') !== null && old('credit_days') !== '' ? (int) old('credit_days') : 'null' }},
-                      cashDiscount: {{ (float) old('cash_discount', 0) }},
-                      freightAmount: {{ (float) old('freight_amount', 0) }},
-                      hammaliAmount: {{ (float) old('hammali_amount', 0) }},
-                      paid: {{ (float) ($paid ?? old('paid_amount', 0)) }},
-                      old: @js($prefillItems ?? old('items', [])),
+                      partyId: '{{ $partyPrefill }}',
+                      supplyState: '{{ $statePrefill }}',
+                      settlement: '{{ $settlePrefill }}',
+                      creditDaysBill: {{ $creditDaysBill !== null && $creditDaysBill !== '' ? (int) $creditDaysBill : 'null' }},
+                      cashDiscount: {{ (float) old('cash_discount', $editing?->cash_discount ?? 0) }},
+                      freightAmount: {{ (float) old('freight_amount', $editing?->freight_amount ?? 0) }},
+                      hammaliAmount: {{ (float) old('hammali_amount', $editing?->hammali_amount ?? 0) }},
+                      paid: {{ $paidPrefill }},
+                      old: @js($formItems),
                   })"
                   @krushi-party-saved.window="
                       if ($event.detail?.kind === 'suppliers' || $event.detail?.kind === 'supplier') {
@@ -69,6 +86,7 @@
                   "
                 >
                 @csrf
+                @if ($isEdit) @method('PUT') @endif
                 @if (! empty($fromOrder))
                     <input type="hidden" name="purchase_order_id" value="{{ $fromOrder->id }}">
                 @endif
@@ -94,11 +112,19 @@
                                max="{{ optional($currentFinancialYear ?? null)?->end_date?->toDateString() }}">
                         @error('purchase_date') <p class="error-text">{{ $message }}</p> @enderror
                     </div>
-                    @include('partials.voucher-number', [
-                        'docType' => 'purchase',
-                        'dateInput' => '[name=purchase_date]',
-                        'numberFormats' => $numberFormats ?? [],
-                    ])
+                    @if ($isEdit)
+                        <div>
+                            <label class="label" for="f-purchase_no">{{ __('Purchase no') }}</label>
+                            <input id="f-purchase_no" type="text" class="input bg-cream/40" value="{{ $editing->purchase_no }}" readonly tabindex="-1">
+                            <p class="mt-1 text-xs text-ink-soft">{{ __('Number stays the same when you amend.') }}</p>
+                        </div>
+                    @else
+                        @include('partials.voucher-number', [
+                            'docType' => 'purchase',
+                            'dateInput' => '[name=purchase_date]',
+                            'numberFormats' => $numberFormats ?? [],
+                        ])
+                    @endif
                     <div class="md:col-span-2">
                         <div class="mb-1.5 flex items-center justify-between gap-2">
                             <label class="label mb-0" for="f-supplier_ledger_id">{{ __('Supplier') }} <span class="text-accent">*</span></label>
@@ -114,15 +140,15 @@
                                 data-placeholder="{{ __('Select supplier') }}">
                             <option value="">{{ __('Select supplier') }}</option>
                             @foreach ($suppliers as $s)
-                                <option value="{{ $s->id }}" @selected((string) ($prefillSupplier ?? old('supplier_ledger_id')) === (string) $s->id)>
+                                <option value="{{ $s->id }}" @selected((string) $partyPrefill === (string) $s->id)>
                                     {{ $s->display_name }}{{ $s->phone ? ' · '.$s->phone : '' }}
                                 </option>
                             @endforeach
                         </select>
                         @error('supplier_ledger_id') <p class="error-text">{{ $message }}</p> @enderror
                     </div>
-                    <x-field name="supplier_invoice_no" :label="__('Supplier invoice no')" />
-                    <x-field name="supplier_invoice_date" type="date" :label="__('Supplier invoice date')" />
+                    <x-field name="supplier_invoice_no" :label="__('Supplier invoice no')" :value="old('supplier_invoice_no', $editing?->supplier_invoice_no ?? '')" />
+                    <x-field name="supplier_invoice_date" type="date" :label="__('Supplier invoice date')" :value="old('supplier_invoice_date', optional($editing?->supplier_invoice_date)->toDateString())" />
                     <div class="md:col-span-2">
                         <label class="label" for="f-supply_state_code">{{ __('Place of supply (state)') }}</label>
                         <select id="f-supply_state_code" name="supply_state_code" x-model="supplyState" class="input">
@@ -131,12 +157,14 @@
                             @endforeach
                         </select>
                     </div>
-                    <x-field name="notes" :label="__('Notes')" class="md:col-span-2" />
+                    <x-field name="notes" :label="__('Notes')" class="md:col-span-2" :value="old('notes', $editing?->notes ?? '')" />
                 </div>
 
                 @include('partials.txn-lines-purchase')
 
                 @foreach ($errors->get('items.*') as $messages) @foreach ($messages as $m) <p class="error-text">{{ $m }}</p> @endforeach @endforeach
+                @error('items') <p class="error-text">{{ $message }}</p> @enderror
+                @error('purchase') <p class="error-text">{{ $message }}</p> @enderror
 
                 <div class="grid gap-4 lg:grid-cols-3">
                     <div>
@@ -147,16 +175,16 @@
                 </div>
 
                 @include('partials.terms-editor', [
-                    'value' => old('terms', $defaultTerms ?? ''),
+                    'value' => $termsPrefill,
                     'label' => __('Terms & conditions (this purchase)'),
                     'hint' => __('Saved on this bill. Default comes from Company settings.'),
                 ])
 
                 <div class="txn-sticky-actions flex flex-wrap gap-2">
-                    <button type="submit" name="after_save" value="show" class="btn-secondary flex-1 sm:flex-none" data-busy-label="{{ __('Saving purchase…') }}">{{ __('Save') }}</button>
-                    <button type="submit" name="after_save" value="print" class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ __('Saving purchase…') }}">{{ __('Save & Print') }}</button>
+                    <button type="submit" name="after_save" value="show" class="btn-secondary flex-1 sm:flex-none" data-busy-label="{{ $isEdit ? __('Updating purchase…') : __('Saving purchase…') }}">{{ $isEdit ? __('Update') : __('Save') }}</button>
+                    <button type="submit" name="after_save" value="print" class="btn-primary flex-1 sm:flex-none" data-busy-label="{{ $isEdit ? __('Updating purchase…') : __('Saving purchase…') }}">{{ $isEdit ? __('Update & Print') : __('Save & Print') }}</button>
                 </div>
             </form>
         </section>
-    @endcan
+    @endif
 </x-app-layout>
